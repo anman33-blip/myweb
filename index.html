@@ -18,13 +18,19 @@ body {
   font-size:18px;
 }
 
-/* 標題 */
+/* 標題 + 在線人數 */
 .header {
   background:#2f3542;
   color:white;
-  padding:18px;
+  padding:14px;
   text-align:center;
-  font-size:22px;
+  font-size:20px;
+}
+
+.online {
+  font-size:14px;
+  margin-top:4px;
+  color:#2ed573;
 }
 
 /* 登入 */
@@ -80,8 +86,9 @@ button.action {
 .btn4 { background:#ffa502; }
 .btn5 { background:#a55eea; }
 .btn6 { background:#2f3542; }
+.btn7 { background:#00c3ff; }
 
-/* 訊息區 */
+/* 聊天區 */
 #chat {
   padding:12px;
   height:55vh;
@@ -97,7 +104,7 @@ button.action {
   box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-/* 🔥 同行顯示 */
+/* 同行 */
 .row {
   display:flex;
   justify-content:space-between;
@@ -113,7 +120,6 @@ button.action {
 
 .action {
   flex:1;
-  text-align:left;
 }
 
 .time {
@@ -122,12 +128,20 @@ button.action {
   min-width:70px;
   text-align:right;
 }
+
+a {
+  font-size:14px;
+  color:#1e90ff;
+}
 </style>
 </head>
 
 <body>
 
-<div class="header">📍 派車即時回報-機場出發</div>
+<div class="header">
+  📍 派車即時回報
+  <div class="online" id="online">🟢 在線：0人</div>
+</div>
 
 <!-- 登入 -->
 <div id="login">
@@ -146,6 +160,7 @@ button.action {
     <button class="action btn4" onclick="send('往飯店 🏨')">往飯店</button>
     <button class="action btn5" onclick="send('經武酒窖')">經武酒窖</button>
     <button class="action btn6" onclick="send('山外圓環')">山外圓環</button>
+    <button class="action btn7" onclick="sendGPS()">📍 回報GPS</button>
   </div>
 
   <div id="chat"></div>
@@ -154,7 +169,6 @@ button.action {
 
 <script>
 
-// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAnMOwK8Awcu_hxdyUjml8o88Anznd9m3Q",
   authDomain: "test-c845c.firebaseapp.com",
@@ -172,7 +186,7 @@ let username = "";
 let messages = [];
 let lastClick = 0;
 
-// 載入名字
+// 登入
 window.onload = function(){
   let saved = localStorage.getItem("name");
   if(saved){
@@ -180,7 +194,6 @@ window.onload = function(){
   }
 }
 
-// 登入
 function start(){
   username = document.getElementById("name").value;
 
@@ -193,10 +206,13 @@ function start(){
 
   document.getElementById("login").style.display="none";
   document.getElementById("main").style.display="block";
+
+  updateOnline(true);
 }
 
-// 發送訊息
+// 發送
 function send(action){
+
   let now = Date.now();
 
   if(now - lastClick < 2000){
@@ -210,28 +226,81 @@ function send(action){
     user: username,
     action: action,
     time: new Date().toLocaleTimeString(),
-    ts: now   // 🔥 用來排序
+    ts: now
   });
 }
 
-// 讀取資料
-db.ref("logs").limitToLast(50).on("child_added", snapshot => {
-  let d = snapshot.val();
+// 📍 GPS回報
+function sendGPS(){
 
-  messages.push(d);
+  if(!navigator.geolocation){
+    alert("不支援GPS");
+    return;
+  }
 
-  // 🔥 最新在上 + 穩定排序
-  messages.sort((a, b) => b.ts - a.ts);
+  navigator.geolocation.getCurrentPosition(pos => {
 
-  renderChat();
+    let lat = pos.coords.latitude;
+    let lng = pos.coords.longitude;
+
+    db.ref("logs").push({
+      user: username,
+      action: "📍 GPS回報",
+      lat: lat,
+      lng: lng,
+      time: new Date().toLocaleTimeString(),
+      ts: Date.now()
+    });
+
+  }, err => {
+    alert("GPS失敗：" + err.message);
+  });
+}
+
+/* 🔥 在線人數 */
+function updateOnline(status){
+  let ref = db.ref("online/" + username);
+
+  if(status){
+    ref.set(true);
+  }
+
+  window.addEventListener("beforeunload", () => {
+    ref.remove();
+  });
+}
+
+/* 即時在線統計 */
+db.ref("online").on("value", snap => {
+  let count = snap.numChildren();
+  document.getElementById("online").innerText = `🟢 在線：${count}人`;
 });
 
-// 渲染畫面
-function renderChat(){
+/* 即時訊息 */
+db.ref("logs").limitToLast(50).on("child_added", snap => {
+
+  let d = snap.val();
+  messages.push(d);
+
+  messages.sort((a,b) => b.ts - a.ts);
+
+  render();
+});
+
+function render(){
+
   let div = document.getElementById("chat");
   div.innerHTML = "";
 
   messages.forEach(d => {
+
+    let gps = "";
+
+    if(d.lat && d.lng){
+      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">
+      📍 查看地圖</a>`;
+    }
+
     let msg = document.createElement("div");
     msg.className = "msg";
 
@@ -241,6 +310,7 @@ function renderChat(){
         <span class="action">${d.action}</span>
         <span class="time">${d.time}</span>
       </div>
+      ${gps}
     `;
 
     div.appendChild(msg);
