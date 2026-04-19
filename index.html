@@ -101,10 +101,31 @@ button.action {
 .btn6 { background:#2f3542; }
 .btn7 { background:#00c3ff; }
 
+/* 手動輸入 */
+.manual {
+  padding:12px;
+  display:flex;
+  gap:8px;
+}
+
+.manual input {
+  flex:1;
+  padding:12px;
+  font-size:16px;
+}
+
+.manual button {
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#57606f;
+  color:white;
+}
+
 /* 訊息區 */
 #chat {
   padding:12px;
-  height:55vh;
+  height:45vh;
   overflow-y:auto;
 }
 
@@ -173,7 +194,13 @@ a {
   <button class="action btn4" onclick="send('往飯店 🏨')">往飯店</button>
   <button class="action btn5" onclick="send('經武酒窖')">經武酒窖</button>
   <button class="action btn6" onclick="send('山外圓環')">山外圓環</button>
-  <button class="action btn7" onclick="sendGPS()">📍 回報GPS</button>
+  <button class="action btn7" onclick="sendGPS()">📍 GPS回報</button>
+</div>
+
+<!-- 📝 手動輸入 -->
+<div class="manual">
+  <input id="manualText" placeholder="手動輸入回報...">
+  <button onclick="sendManual()">送出</button>
 </div>
 
 <div id="chat"></div>
@@ -223,7 +250,7 @@ function start(){
   setOnline();
 }
 
-/* 發送 */
+/* 固定回報 */
 function send(action){
 
   let now = Date.now();
@@ -243,13 +270,28 @@ function send(action){
   });
 }
 
-/* GPS */
-function sendGPS(){
+/* 📝 手動輸入 */
+function sendManual(){
 
-  if(!navigator.geolocation){
-    alert("不支援GPS");
+  let text = document.getElementById("manualText").value;
+
+  if(!text){
+    alert("請輸入內容");
     return;
   }
+
+  db.ref("logs").push({
+    user: username,
+    action: "📝 " + text,
+    time: new Date().toLocaleTimeString(),
+    ts: Date.now()
+  });
+
+  document.getElementById("manualText").value = "";
+}
+
+/* 📍 GPS */
+function sendGPS(){
 
   navigator.geolocation.getCurrentPosition(pos => {
 
@@ -265,7 +307,7 @@ function sendGPS(){
   });
 }
 
-/* 在線 */
+/* 🟢 在線 */
 function setOnline(){
   let ref = db.ref("online/" + username);
   ref.set(true);
@@ -317,7 +359,7 @@ function render(){
   });
 }
 
-/* 🧹 清空訊息（密碼 338888） */
+/* 🧹 清空（密碼 338888） */
 function clearLogs(){
 
   let pwd = prompt("請輸入管理密碼");
