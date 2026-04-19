@@ -6,19 +6,18 @@
 
 <title>即時回報系統</title>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 
 <style>
 body {
   margin:0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI";
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI";
   background:#f5f6fa;
   font-size:18px;
 }
 
-/* 標題 + 在線人數 */
+/* 標題 */
 .header {
   background:#2f3542;
   color:white;
@@ -88,14 +87,14 @@ button.action {
 .btn6 { background:#2f3542; }
 .btn7 { background:#00c3ff; }
 
-/* 聊天區 */
+/* 訊息區 */
 #chat {
   padding:12px;
   height:55vh;
   overflow-y:auto;
 }
 
-/* 訊息卡片 */
+/* 訊息 */
 .msg {
   background:white;
   padding:12px;
@@ -104,13 +103,11 @@ button.action {
   box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-/* 同行 */
 .row {
   display:flex;
   justify-content:space-between;
   align-items:center;
   gap:10px;
-  font-size:16px;
 }
 
 .name {
@@ -139,8 +136,8 @@ a {
 <body>
 
 <div class="header">
-  📍 派車即時回報
-  <div class="online" id="online">🟢 在線：0人</div>
+📍 派車即時回報
+<div class="online" id="online">🟢 在線：0人</div>
 </div>
 
 <!-- 登入 -->
@@ -153,17 +150,17 @@ a {
 <!-- 主畫面 -->
 <div id="main">
 
-  <div class="buttons">
-    <button class="action btn1" onclick="send('離開機場 ✈️')">離開機場</button>
-    <button class="action btn2" onclick="send('往碼頭 🚢')">往碼頭</button>
-    <button class="action btn3" onclick="send('往廣場 🏢')">往廣場</button>
-    <button class="action btn4" onclick="send('往飯店 🏨')">往飯店</button>
-    <button class="action btn5" onclick="send('經武酒窖')">經武酒窖</button>
-    <button class="action btn6" onclick="send('山外圓環')">山外圓環</button>
-    <button class="action btn7" onclick="sendGPS()">📍 回報GPS</button>
-  </div>
+<div class="buttons">
+  <button class="action btn1" onclick="send('離開機場 ✈️')">離開機場</button>
+  <button class="action btn2" onclick="send('往碼頭 🚢')">往碼頭</button>
+  <button class="action btn3" onclick="send('往廣場 🏢')">往廣場</button>
+  <button class="action btn4" onclick="send('往飯店 🏨')">往飯店</button>
+  <button class="action btn5" onclick="send('經武酒窖')">經武酒窖</button>
+  <button class="action btn6" onclick="send('山外圓環')">山外圓環</button>
+  <button class="action btn7" onclick="sendGPS()">📍 回報GPS</button>
+</div>
 
-  <div id="chat"></div>
+<div id="chat"></div>
 
 </div>
 
@@ -186,7 +183,7 @@ let username = "";
 let messages = [];
 let lastClick = 0;
 
-// 登入
+/* 登入 */
 window.onload = function(){
   let saved = localStorage.getItem("name");
   if(saved){
@@ -207,10 +204,10 @@ function start(){
   document.getElementById("login").style.display="none";
   document.getElementById("main").style.display="block";
 
-  updateOnline(true);
+  setOnline();
 }
 
-// 發送
+/* 發送 */
 function send(action){
 
   let now = Date.now();
@@ -230,7 +227,7 @@ function send(action){
   });
 }
 
-// 📍 GPS回報
+/* GPS */
 function sendGPS(){
 
   if(!navigator.geolocation){
@@ -240,47 +237,39 @@ function sendGPS(){
 
   navigator.geolocation.getCurrentPosition(pos => {
 
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
-
     db.ref("logs").push({
       user: username,
       action: "📍 GPS回報",
-      lat: lat,
-      lng: lng,
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
       time: new Date().toLocaleTimeString(),
       ts: Date.now()
     });
 
-  }, err => {
-    alert("GPS失敗：" + err.message);
   });
 }
 
-/* 🔥 在線人數 */
-function updateOnline(status){
+/* 🔥 在線系統（修正版） */
+function setOnline(){
+
   let ref = db.ref("online/" + username);
 
-  if(status){
-    ref.set(true);
-  }
+  ref.set(true);
 
-  window.addEventListener("beforeunload", () => {
-    ref.remove();
-  });
+  // ⭐ 正確離線機制（關頁/斷線都會自動移除）
+  ref.onDisconnect().remove();
 }
 
-/* 即時在線統計 */
+/* 在線人數 */
 db.ref("online").on("value", snap => {
-  let count = snap.numChildren();
-  document.getElementById("online").innerText = `🟢 在線：${count}人`;
+  document.getElementById("online").innerText =
+    `🟢 在線：${snap.numChildren()}人`;
 });
 
-/* 即時訊息 */
+/* 訊息 */
 db.ref("logs").limitToLast(50).on("child_added", snap => {
 
-  let d = snap.val();
-  messages.push(d);
+  messages.push(snap.val());
 
   messages.sort((a,b) => b.ts - a.ts);
 
