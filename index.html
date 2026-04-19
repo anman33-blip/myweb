@@ -194,7 +194,6 @@ function send(action){
     time: new Date().toLocaleTimeString()
   });
 }
-
 db.ref("logs").limitToLast(50).on("child_added", snapshot => {
   let d = snapshot.val();
 
