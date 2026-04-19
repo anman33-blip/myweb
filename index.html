@@ -24,12 +24,26 @@ body {
   padding:14px;
   text-align:center;
   font-size:20px;
+  position:relative;
 }
 
 .online {
   font-size:14px;
   margin-top:4px;
   color:#2ed573;
+}
+
+/* 清空按鈕 */
+.clear-btn {
+  position:absolute;
+  right:10px;
+  top:10px;
+  padding:6px 10px;
+  font-size:12px;
+  border:none;
+  border-radius:8px;
+  background:#ff4757;
+  color:white;
 }
 
 /* 登入 */
@@ -138,6 +152,8 @@ a {
 <div class="header">
 📍 派車即時回報
 <div class="online" id="online">🟢 在線：0人</div>
+
+<button class="clear-btn" onclick="clearLogs()">清空</button>
 </div>
 
 <!-- 登入 -->
@@ -249,18 +265,13 @@ function sendGPS(){
   });
 }
 
-/* 🔥 在線系統（修正版） */
+/* 在線 */
 function setOnline(){
-
   let ref = db.ref("online/" + username);
-
   ref.set(true);
-
-  // ⭐ 正確離線機制（關頁/斷線都會自動移除）
   ref.onDisconnect().remove();
 }
 
-/* 在線人數 */
 db.ref("online").on("value", snap => {
   document.getElementById("online").innerText =
     `🟢 在線：${snap.numChildren()}人`;
@@ -304,6 +315,25 @@ function render(){
 
     div.appendChild(msg);
   });
+}
+
+/* 🧹 清空訊息（密碼 338888） */
+function clearLogs(){
+
+  let pwd = prompt("請輸入管理密碼");
+
+  if(pwd !== "338888"){
+    alert("密碼錯誤");
+    return;
+  }
+
+  if(confirm("確定清空所有訊息？")){
+    db.ref("logs").remove().then(() => {
+      messages = [];
+      document.getElementById("chat").innerHTML = "";
+      alert("已清空");
+    });
+  }
 }
 
 </script>
