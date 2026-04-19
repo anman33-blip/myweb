@@ -2,8 +2,6 @@
 <html>
 <head>
 <meta charset="utf-8">
-
-<!-- 📱 手機必加：否則會縮放錯誤 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>即時回報系統</title>
@@ -17,7 +15,7 @@ body {
   margin:0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI";
   background:#f5f6fa;
-  font-size:18px; /* 🔥 全域放大 */
+  font-size:18px;
 }
 
 /* 標題 */
@@ -58,7 +56,7 @@ input {
   display:none;
 }
 
-/* 按鈕區 */
+/* 按鈕 */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -75,15 +73,15 @@ button.action {
   font-weight:bold;
 }
 
-/* 🎨 每個按鈕不同顏色 */
-.btn1 { background:#ff4757; }   /* 紅 */
-.btn2 { background:#1e90ff; }   /* 藍 */
-.btn3 { background:#2ed573; }   /* 綠 */
-.btn4 { background:#ffa502; }   /* 橘 */
-.btn5 { background:#a55eea; }   /* 紫 */
-.btn6 { background:#2f3542; }   /* 深灰 */
+/* 顏色 */
+.btn1 { background:#ff4757; }
+.btn2 { background:#1e90ff; }
+.btn3 { background:#2ed573; }
+.btn4 { background:#ffa502; }
+.btn5 { background:#a55eea; }
+.btn6 { background:#2f3542; }
 
-/* 聊天區 */
+/* 訊息區 */
 #chat {
   padding:12px;
   height:55vh;
@@ -97,17 +95,32 @@ button.action {
   margin-bottom:10px;
   border-radius:12px;
   box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* 🔥 同行顯示 */
+.row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
   font-size:16px;
 }
 
 .name {
   font-weight:bold;
-  font-size:17px;
+  min-width:70px;
+}
+
+.action {
+  flex:1;
+  text-align:left;
 }
 
 .time {
   font-size:12px;
   color:gray;
+  min-width:70px;
+  text-align:right;
 }
 </style>
 </head>
@@ -141,6 +154,7 @@ button.action {
 
 <script>
 
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAnMOwK8Awcu_hxdyUjml8o88Anznd9m3Q",
   authDomain: "test-c845c.firebaseapp.com",
@@ -155,8 +169,10 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let username = "";
+let messages = [];
 let lastClick = 0;
 
+// 載入名字
 window.onload = function(){
   let saved = localStorage.getItem("name");
   if(saved){
@@ -164,6 +180,7 @@ window.onload = function(){
   }
 }
 
+// 登入
 function start(){
   username = document.getElementById("name").value;
 
@@ -178,6 +195,7 @@ function start(){
   document.getElementById("main").style.display="block";
 }
 
+// 發送訊息
 function send(action){
   let now = Date.now();
 
@@ -191,26 +209,43 @@ function send(action){
   db.ref("logs").push({
     user: username,
     action: action,
-    time: new Date().toLocaleTimeString()
+    time: new Date().toLocaleTimeString(),
+    ts: now   // 🔥 用來排序
   });
 }
+
+// 讀取資料
 db.ref("logs").limitToLast(50).on("child_added", snapshot => {
   let d = snapshot.val();
 
-  let div = document.getElementById("chat");
+  messages.push(d);
 
-  let msg = document.createElement("div");
-  msg.className = "msg";
+  // 🔥 最新在上 + 穩定排序
+  messages.sort((a, b) => b.ts - a.ts);
 
-  msg.innerHTML = `
-    <div class="name">${d.user}</div>
-    <div>${d.action}</div>
-    <div class="time">${d.time}</div>
-  `;
-
-  div.appendChild(msg);
-  div.scrollTop = div.scrollHeight;
+  renderChat();
 });
+
+// 渲染畫面
+function renderChat(){
+  let div = document.getElementById("chat");
+  div.innerHTML = "";
+
+  messages.forEach(d => {
+    let msg = document.createElement("div");
+    msg.className = "msg";
+
+    msg.innerHTML = `
+      <div class="row">
+        <span class="name">${d.user}</span>
+        <span class="action">${d.action}</span>
+        <span class="time">${d.time}</span>
+      </div>
+    `;
+
+    div.appendChild(msg);
+  });
+}
 
 </script>
 
