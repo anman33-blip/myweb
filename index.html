@@ -17,7 +17,6 @@ body {
   font-size:18px;
 }
 
-/* HEADER */
 .header {
   background:#2f3542;
   color:white;
@@ -48,7 +47,6 @@ body {
 .clear-btn { background:#ff4757; }
 .logout-btn { background:#57606f; }
 
-/* LOGIN */
 #login {
   text-align:center;
   margin-top:60px;
@@ -71,10 +69,8 @@ input {
   border-radius:10px;
 }
 
-/* MAIN */
 #main { display:none; }
 
-/* BUTTONS */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -97,11 +93,8 @@ button.action {
 .btn5 { background:#a55eea; }
 .btn6 { background:#2f3542; }
 .btn7 { background:#00c3ff; }
-
-/* 👉 抵達（改成綠色＝完成狀態） */
 .btn8 { background:#2ed573; }
 
-/* manual */
 .manual {
   display:flex;
   gap:8px;
@@ -121,7 +114,6 @@ button.action {
   color:white;
 }
 
-/* CHAT */
 #chat {
   padding:12px;
   height:45vh;
@@ -149,7 +141,14 @@ button.action {
 
 .name { font-weight:bold; min-width:60px; }
 .action { flex:1; }
-.time { font-size:12px; color:gray; min-width:130px; text-align:right; }
+
+.time { 
+  font-size:12px; 
+  color:gray; 
+  min-width:110px; 
+  text-align:right; 
+  white-space:pre-line;
+}
 </style>
 </head>
 
@@ -168,14 +167,12 @@ button.action {
   </div>
 </div>
 
-<!-- LOGIN -->
 <div id="login">
   <input id="name" placeholder="輸入名字">
   <br>
   <button class="login-btn" onclick="start()">進入系統</button>
 </div>
 
-<!-- MAIN -->
 <div id="main">
 
 <div class="buttons">
@@ -217,41 +214,56 @@ let messages = [];
 let lastClick = 0;
 let lastSound = 0;
 
-/* 🔊 防爆音 */
+/* 🔊 聲音 */
 function playSound(){
   let now = Date.now();
   if(now - lastSound < 1000) return;
   lastSound = now;
 
   let audio = document.getElementById("notifySound");
-
   audio.currentTime = 0;
   audio.play().catch(()=>{});
-
-  setTimeout(()=>{
-    audio.currentTime = 0;
-    audio.play().catch(()=>{});
-  },200);
+  setTimeout(()=>{ audio.currentTime=0; audio.play().catch(()=>{}); },200);
 }
 
-/* 日期時間 */
+/* 日期格式 */
 function getTime(){
   let d = new Date();
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${d.toLocaleTimeString()}`;
 }
 
+/* ⭐ 時間格式（含幾分鐘前） */
+function formatTime(d){
+
+  let date = new Date(d.ts);
+  let now = Date.now();
+  let diff = Math.floor((now - d.ts)/1000);
+
+  let ago = "";
+
+  if(diff < 60){
+    ago = diff + "秒前";
+  }else if(diff < 3600){
+    ago = Math.floor(diff/60) + "分鐘前";
+  }else if(diff < 86400){
+    ago = Math.floor(diff/3600) + "小時前";
+  }else{
+    ago = Math.floor(diff/86400) + "天前";
+  }
+
+  let dateStr = `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,'0')}/${String(date.getDate()).padStart(2,'0')}`;
+  let timeStr = date.toLocaleTimeString();
+
+  return `${dateStr}\n${timeStr}\n(${ago})`;
+}
+
 /* 自動登入 */
 window.onload = function(){
-
   let saved = localStorage.getItem("name");
-
   if(saved){
     username = saved;
-    document.getElementById("name").value = saved;
-
     document.getElementById("login").style.display="none";
     document.getElementById("main").style.display="block";
-
     setOnline();
   }
 }
@@ -259,17 +271,11 @@ window.onload = function(){
 /* 登入 */
 function start(){
   username = document.getElementById("name").value;
-
-  if(!username){
-    alert("請輸入名字");
-    return;
-  }
+  if(!username){ alert("請輸入名字"); return; }
 
   localStorage.setItem("name", username);
-
   document.getElementById("login").style.display="none";
   document.getElementById("main").style.display="block";
-
   setOnline();
 }
 
@@ -279,47 +285,17 @@ function logout(){
   location.reload();
 }
 
-/* 發送（含錯誤提示＋可重送） */
+/* 發送 */
 function send(action){
-
   let now = Date.now();
-
-  if(now - lastClick < 2000){
-    alert("請勿連續點擊");
-    return;
-  }
-
+  if(now - lastClick < 2000){ alert("請勿連續點擊"); return; }
   lastClick = now;
 
-  let data = {
+  db.ref("logs").push({
     user: username,
     action: action,
     time: getTime(),
     ts: now
-  };
-
-  db.ref("logs").push(data)
-  .catch(err => {
-
-    alert("❌ 發送失敗（網路不穩）");
-
-    sessionStorage.setItem("retry", JSON.stringify(data));
-  });
-}
-
-/* 重送 */
-function retrySend(){
-
-  let data = sessionStorage.getItem("retry");
-  if(!data){
-    alert("沒有可重送資料");
-    return;
-  }
-
-  db.ref("logs").push(JSON.parse(data))
-  .then(()=>{
-    alert("✅ 已重新送出");
-    sessionStorage.removeItem("retry");
   });
 }
 
@@ -333,9 +309,7 @@ function sendManual(){
 
 /* GPS */
 function sendGPS(){
-
-  navigator.geolocation.getCurrentPosition(pos => {
-
+  navigator.geolocation.getCurrentPosition(pos=>{
     db.ref("logs").push({
       user: username,
       action: "📍 GPS回報",
@@ -344,7 +318,6 @@ function sendGPS(){
       time: getTime(),
       ts: Date.now()
     });
-
   });
 }
 
@@ -355,47 +328,39 @@ function setOnline(){
   ref.onDisconnect().remove();
 }
 
-db.ref("online").on("value", snap => {
+db.ref("online").on("value", snap=>{
   document.getElementById("online").innerText =
     `🟢 在線：${snap.numChildren()}`;
 });
 
 /* 訊息 */
-db.ref("logs").limitToLast(50).on("child_added", snap => {
-
+db.ref("logs").limitToLast(50).on("child_added", snap=>{
   messages.push(snap.val());
   messages.sort((a,b)=>b.ts-a.ts);
-
   playSound();
   render();
 });
 
 /* render */
 function render(){
-
   let div = document.getElementById("chat");
   div.innerHTML = "";
 
-  messages.forEach((d,i) => {
-
-    let gps = "";
-
+  messages.forEach((d,i)=>{
+    let gps="";
     if(d.lat){
-      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">📍 地圖</a>`;
+      gps=`<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">📍 地圖</a>`;
     }
 
-    let msg = document.createElement("div");
-    msg.className = "msg";
+    let msg=document.createElement("div");
+    msg.className="msg";
+    if(i===0) msg.classList.add("latest");
 
-    if(i === 0){
-      msg.classList.add("latest");
-    }
-
-    msg.innerHTML = `
+    msg.innerHTML=`
       <div class="row">
         <span class="name">${d.user}</span>
         <span class="action">${d.action}</span>
-        <span class="time">${d.time}</span>
+        <span class="time">${formatTime(d)}</span>
       </div>
       ${gps}
     `;
@@ -404,19 +369,19 @@ function render(){
   });
 }
 
+/* ⭐ 每分鐘自動刷新時間 */
+setInterval(()=>{
+  render();
+},60000);
+
 /* 清空 */
 function clearLogs(){
-
   let pwd = prompt("請輸入管理密碼");
-
-  if(pwd !== "338888"){
-    alert("密碼錯誤");
-    return;
-  }
+  if(pwd !== "338888"){ alert("密碼錯誤"); return; }
 
   db.ref("logs").remove();
   messages = [];
-  document.getElementById("chat").innerHTML = "";
+  document.getElementById("chat").innerHTML="";
 }
 
 </script>
