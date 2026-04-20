@@ -17,28 +17,38 @@ body {
   font-size:18px;
 }
 
-/* 標題 */
+/* HEADER */
 .header {
   background:#2f3542;
   color:white;
-  padding:14px;
+  padding:12px;
   display:flex;
   justify-content:space-between;
   align-items:center;
 }
 
-/* 在線 */
 .online {
   font-size:14px;
   color:#2ed573;
 }
 
-/* 按鈕 */
-button {
-  cursor:pointer;
+.header-right {
+  display:flex;
+  gap:8px;
 }
 
-/* 登入 */
+.header-btn {
+  padding:6px 10px;
+  font-size:12px;
+  border:none;
+  border-radius:8px;
+  color:white;
+}
+
+.clear-btn { background:#ff4757; }
+.logout-btn { background:#57606f; }
+
+/* LOGIN */
 #login {
   text-align:center;
   margin-top:60px;
@@ -61,14 +71,14 @@ input {
   border-radius:10px;
 }
 
-/* 主畫面 */
+/* MAIN */
 #main { display:none; }
 
-/* 按鈕區 */
+/* BUTTONS */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:12px;
+  gap:10px;
   padding:12px;
 }
 
@@ -76,7 +86,7 @@ button.action {
   padding:18px;
   font-size:18px;
   border:none;
-  border-radius:14px;
+  border-radius:12px;
   color:white;
 }
 
@@ -88,11 +98,11 @@ button.action {
 .btn6 { background:#2f3542; }
 .btn7 { background:#00c3ff; }
 
-/* 手動 */
+/* manual */
 .manual {
-  padding:12px;
   display:flex;
   gap:8px;
+  padding:12px;
 }
 
 .manual input {
@@ -108,7 +118,7 @@ button.action {
   color:white;
 }
 
-/* 訊息 */
+/* CHAT */
 #chat {
   padding:12px;
   height:45vh;
@@ -119,92 +129,50 @@ button.action {
   background:white;
   padding:12px;
   margin-bottom:10px;
-  border-radius:12px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  border-radius:10px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
 }
 
-/* ⭐ 最新訊息高亮 */
 .msg.latest {
   background:#e8f4ff;
-  border-left:5px solid #1e90ff;
+  border-left:4px solid #1e90ff;
 }
 
 .row {
   display:flex;
   justify-content:space-between;
-  align-items:center;
   gap:8px;
 }
 
-.name {
-  font-weight:bold;
-  min-width:60px;
-}
-
+.name { font-weight:bold; min-width:60px; }
 .action { flex:1; }
-
-.time {
-  font-size:12px;
-  color:gray;
-  min-width:120px;
-  text-align:right;
-}
-
-/* 重送按鈕 */
-.retry {
-  margin-top:6px;
-  font-size:12px;
-  padding:4px 8px;
-  border:none;
-  background:#ff4757;
-  color:white;
-  border-radius:6px;
-}
+.time { font-size:12px; color:gray; min-width:130px; text-align:right; }
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  
-  <div style="font-weight:bold;">
-    📍 派車即時回報
-  </div>
+  <div>📍 派車回報系統</div>
 
   <div style="display:flex; align-items:center; gap:10px;">
+    <div class="online" id="online">🟢 在線：0</div>
 
-    <div class="online" id="online">🟢 在線：0人</div>
-
-    <button onclick="clearLogs()" style="
-      padding:6px 10px;
-      font-size:12px;
-      border:none;
-      border-radius:8px;
-      background:#ff4757;
-      color:white;
-    ">清空</button>
-
-    <button onclick="logout()" style="
-      padding:6px 10px;
-      font-size:12px;
-      border:none;
-      border-radius:8px;
-      background:#57606f;
-      color:white;
-    ">退出</button>
-
+    <div class="header-right">
+      <button class="header-btn clear-btn" onclick="clearLogs()">清空</button>
+      <button class="header-btn logout-btn" onclick="logout()">退出</button>
+    </div>
   </div>
-
 </div>
 
-<!-- 登入 -->
+<!-- LOGIN -->
 <div id="login">
   <input id="name" placeholder="輸入名字">
   <br>
   <button class="login-btn" onclick="start()">進入系統</button>
 </div>
 
-<!-- 主畫面 -->
+<!-- MAIN -->
 <div id="main">
 
 <div class="buttons">
@@ -244,32 +212,39 @@ let username = "";
 let messages = [];
 let lastClick = 0;
 
-/* 🔊 1秒只響一次 */
-let lastSoundTime = 0;
+/* 🔊 防爆音 */
+let lastSound = 0;
 
 function playSound(){
   let now = Date.now();
-  if(now - lastSoundTime < 1000) return;
-
-  lastSoundTime = now;
+  if(now - lastSound < 1000) return;
+  lastSound = now;
 
   let audio = document.getElementById("notifySound");
+
   audio.currentTime = 0;
   audio.play().catch(()=>{});
 
   setTimeout(()=>{
     audio.currentTime = 0;
     audio.play().catch(()=>{});
-  }, 200);
+  },200);
 }
 
-/* 登入 */
+/* 日期時間 */
+function getTime(){
+  let d = new Date();
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${d.toLocaleTimeString()}`;
+}
+
+/* 自動登入 */
 window.onload = function(){
+
   let saved = localStorage.getItem("name");
 
   if(saved){
-    document.getElementById("name").value = saved;
     username = saved;
+    document.getElementById("name").value = saved;
 
     document.getElementById("login").style.display="none";
     document.getElementById("main").style.display="block";
@@ -278,6 +253,7 @@ window.onload = function(){
   }
 }
 
+/* 登入 */
 function start(){
   username = document.getElementById("name").value;
 
@@ -294,13 +270,13 @@ function start(){
   setOnline();
 }
 
-/* 日期時間 */
-function getTime(){
-  let d = new Date();
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${d.toLocaleTimeString()}`;
+/* 退出 */
+function logout(){
+  localStorage.removeItem("name");
+  location.reload();
 }
 
-/* 發送（失敗可重送） */
+/* 發送 */
 function send(action){
 
   let now = Date.now();
@@ -312,34 +288,18 @@ function send(action){
 
   lastClick = now;
 
-  let data = {
+  db.ref("logs").push({
     user: username,
     action: action,
     time: getTime(),
     ts: now
-  };
-
-  db.ref("logs").push(data)
-  .catch(err => {
-
-    alert("❌ 傳送失敗");
-
-    // 存本地可重送
-    let retryData = JSON.stringify(data);
-    let btn = confirm("是否重新發送？");
-
-    if(btn){
-      db.ref("logs").push(data);
-    }
   });
 }
 
 /* 手動 */
 function sendManual(){
-
   let text = document.getElementById("manualText").value;
   if(!text) return;
-
   send("📝 " + text);
   document.getElementById("manualText").value = "";
 }
@@ -370,7 +330,7 @@ function setOnline(){
 
 db.ref("online").on("value", snap => {
   document.getElementById("online").innerText =
-    `🟢 在線：${snap.numChildren()}人`;
+    `🟢 在線：${snap.numChildren()}`;
 });
 
 /* 訊息 */
@@ -380,7 +340,6 @@ db.ref("logs").limitToLast(50).on("child_added", snap => {
   messages.sort((a,b)=>b.ts-a.ts);
 
   playSound();
-
   render();
 });
 
@@ -390,7 +349,7 @@ function render(){
   let div = document.getElementById("chat");
   div.innerHTML = "";
 
-  messages.forEach((d, index) => {
+  messages.forEach((d,i) => {
 
     let gps = "";
 
@@ -401,8 +360,7 @@ function render(){
     let msg = document.createElement("div");
     msg.className = "msg";
 
-    /* ⭐ 最新高亮 */
-    if(index === 0){
+    if(i === 0){
       msg.classList.add("latest");
     }
 
@@ -417,6 +375,21 @@ function render(){
 
     div.appendChild(msg);
   });
+}
+
+/* 清空 */
+function clearLogs(){
+
+  let pwd = prompt("請輸入管理密碼");
+
+  if(pwd !== "338888"){
+    alert("密碼錯誤");
+    return;
+  }
+
+  db.ref("logs").remove();
+  messages = [];
+  document.getElementById("chat").innerHTML = "";
 }
 
 </script>
