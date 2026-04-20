@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>派車即時回報系統</title>
+<title>即時回報系統</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
@@ -17,33 +17,45 @@ body {
   font-size:18px;
 }
 
+/* 🔥 標題列改成左右 */
 .header {
   background:#2f3542;
   color:white;
   padding:14px;
-  text-align:center;
-  font-size:20px;
-  position:relative;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:18px;
+}
+
+.leftTitle {
+  font-weight:bold;
 }
 
 .online {
   font-size:14px;
-  margin-top:4px;
   color:#2ed573;
 }
 
-.clear-btn {
-  position:absolute;
-  right:10px;
-  top:10px;
+/* 按鈕 */
+.header-actions {
+  display:flex;
+  gap:6px;
+}
+
+.small-btn {
   padding:6px 10px;
   font-size:12px;
   border:none;
   border-radius:8px;
-  background:#ff4757;
   color:white;
+  cursor:pointer;
 }
 
+.clear-btn { background:#ff4757; }
+.logout-btn { background:#57606f; }
+
+/* 登入 */
 #login {
   text-align:center;
   margin-top:60px;
@@ -69,6 +81,7 @@ input {
 
 #main { display:none; }
 
+/* 按鈕區 */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -93,6 +106,7 @@ button.action {
 .btn6 { background:#2f3542; }
 .btn7 { background:#00c3ff; }
 
+/* 手動輸入 */
 .manual {
   padding:12px;
   display:flex;
@@ -113,6 +127,7 @@ button.action {
   color:white;
 }
 
+/* 訊息 */
 #chat {
   padding:12px;
   height:45vh;
@@ -134,33 +149,28 @@ button.action {
   gap:10px;
 }
 
-.name {
-  font-weight:bold;
-  min-width:70px;
-}
-
+.name { font-weight:bold; min-width:70px; }
 .action { flex:1; }
+.time { font-size:12px; color:gray; min-width:70px; text-align:right; }
 
-.time {
-  font-size:12px;
-  color:gray;
-  min-width:70px;
-  text-align:right;
-}
-
-a {
-  font-size:14px;
-  color:#1e90ff;
-}
+a { font-size:14px; color:#1e90ff; }
 </style>
 </head>
 
 <body>
 
+<!-- 🔥 標題列（同一列） -->
 <div class="header">
-📍 派車即時回報
-<div class="online" id="online">🟢 在線：0人</div>
-<button class="clear-btn" onclick="clearLogs()">清空</button>
+  <div class="leftTitle">📍 派車即時回報</div>
+
+  <div style="display:flex; align-items:center; gap:10px;">
+    <div class="online" id="online">🟢 在線：0人</div>
+
+    <div class="header-actions">
+      <button class="small-btn clear-btn" onclick="clearLogs()">清空</button>
+      <button class="small-btn logout-btn" onclick="logout()">退出</button>
+    </div>
+  </div>
 </div>
 
 <!-- 登入 -->
@@ -192,7 +202,7 @@ a {
 
 </div>
 
-<!-- 🔊 音效 -->
+<!-- 音效 -->
 <audio id="notifySound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
@@ -212,7 +222,7 @@ let messages = [];
 let lastClick = 0;
 let firstLoad = true;
 
-/* 🔊 嗶嗶兩聲 */
+/* 🔊 聲音 */
 function playSound(){
   let audio = document.getElementById("notifySound");
 
@@ -225,7 +235,7 @@ function playSound(){
   }, 250);
 }
 
-/* 🚀 自動登入 */
+/* 登入（含自動登入） */
 window.onload = function(){
 
   let saved = localStorage.getItem("name");
@@ -241,7 +251,7 @@ window.onload = function(){
   }
 }
 
-/* 登入 */
+/* 進入 */
 function start(){
 
   username = document.getElementById("name").value;
@@ -257,6 +267,17 @@ function start(){
   document.getElementById("main").style.display="block";
 
   setOnline();
+}
+
+/* 🚪 退出系統 */
+function logout(){
+
+  localStorage.removeItem("name");
+
+  username = "";
+
+  document.getElementById("main").style.display="none";
+  document.getElementById("login").style.display="block";
 }
 
 /* 發送 */
@@ -338,7 +359,6 @@ db.ref("logs").limitToLast(50).on("child_added", snap => {
   render();
 });
 
-/* render */
 function render(){
 
   let div = document.getElementById("chat");
@@ -349,8 +369,7 @@ function render(){
     let gps = "";
 
     if(d.lat){
-      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">
-      📍 查看地圖</a>`;
+      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">📍 查看地圖</a>`;
     }
 
     let msg = document.createElement("div");
@@ -381,11 +400,9 @@ function clearLogs(){
     return;
   }
 
-  if(confirm("確定清空？")){
-    db.ref("logs").remove();
-    messages = [];
-    document.getElementById("chat").innerHTML = "";
-  }
+  db.ref("logs").remove();
+  messages = [];
+  document.getElementById("chat").innerHTML = "";
 }
 
 </script>
