@@ -320,18 +320,56 @@ function sendManual(){
 /* GPS */
 function sendGPS(){
 
-  navigator.geolocation.getCurrentPosition(pos => {
+  if(!navigator.geolocation){
+    alert("此裝置不支援GPS");
+    return;
+  }
 
-    db.ref("logs").push({
-      user: username,
-      action: "📍 GPS回報",
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
-      time: new Date().toLocaleTimeString(),
-      ts: Date.now()
-    });
+  navigator.geolocation.getCurrentPosition(
+  
+    function(pos){
 
-  });
+      db.ref("logs").push({
+        user: username,
+        action: "📍 GPS回報",
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        time: new Date().toLocaleTimeString(),
+        ts: Date.now()
+      });
+
+    },
+
+    function(error){
+
+      // 🔥 Safari會靠這裡回報錯誤
+      let msg = "";
+
+      switch(error.code){
+        case 1:
+          msg = "❌ 未允許定位權限";
+          break;
+        case 2:
+          msg = "❌ 無法取得位置（GPS關閉或訊號差）";
+          break;
+        case 3:
+          msg = "❌ 取得位置超時";
+          break;
+        default:
+          msg = "❌ GPS未知錯誤";
+      }
+
+      alert(msg);
+      console.log(error);
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+
+  );
 }
 
 /* 在線 */
