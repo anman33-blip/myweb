@@ -166,8 +166,35 @@ button.action {
 <body>
 
 <div class="header">
-  <div>📍 派車即時回報</div>
-  <div class="online" id="online">🟢 在線：0人</div>
+  
+  <div style="font-weight:bold;">
+    📍 派車即時回報
+  </div>
+
+  <div style="display:flex; align-items:center; gap:10px;">
+
+    <div class="online" id="online">🟢 在線：0人</div>
+
+    <button onclick="clearLogs()" style="
+      padding:6px 10px;
+      font-size:12px;
+      border:none;
+      border-radius:8px;
+      background:#ff4757;
+      color:white;
+    ">清空</button>
+
+    <button onclick="logout()" style="
+      padding:6px 10px;
+      font-size:12px;
+      border:none;
+      border-radius:8px;
+      background:#57606f;
+      color:white;
+    ">退出</button>
+
+  </div>
+
 </div>
 
 <!-- 登入 -->
