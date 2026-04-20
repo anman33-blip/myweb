@@ -2,55 +2,72 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>派車即時回報</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- PWA / 類APP -->
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>即時回報系統</title>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 
 <style>
 body {
   margin:0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI";
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI";
   background:#f5f6fa;
+  font-size:18px;
 }
 
 /* 標題 */
 .header {
   background:#2f3542;
   color:white;
-  padding:15px;
+  padding:14px;
   text-align:center;
   font-size:20px;
+  position:relative;
+}
+
+.online {
+  font-size:14px;
+  margin-top:4px;
+  color:#2ed573;
+}
+
+/* 清空按鈕 */
+.clear-btn {
+  position:absolute;
+  right:10px;
+  top:10px;
+  padding:6px 10px;
+  font-size:12px;
+  border:none;
+  border-radius:8px;
+  background:#ff4757;
+  color:white;
 }
 
 /* 登入 */
 #login {
   text-align:center;
-  margin-top:50px;
+  margin-top:60px;
 }
 
 input {
-  padding:12px;
-  width:70%;
-  font-size:16px;
-  border-radius:8px;
+  padding:14px;
+  width:80%;
+  font-size:18px;
+  border-radius:10px;
   border:1px solid #ccc;
 }
 
 .login-btn {
-  margin-top:10px;
-  padding:12px 30px;
+  margin-top:15px;
+  padding:14px 40px;
   border:none;
   background:#3742fa;
   color:white;
-  border-radius:8px;
-  font-size:16px;
+  border-radius:10px;
+  font-size:18px;
 }
 
 /* 主畫面 */
@@ -58,20 +75,21 @@ input {
   display:none;
 }
 
-/* 按鈕區 */
+/* 按鈕 */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:10px;
-  padding:10px;
+  gap:12px;
+  padding:12px;
 }
 
 button.action {
-  padding:15px;
-  font-size:16px;
+  padding:18px;
+  font-size:18px;
   border:none;
-  border-radius:12px;
+  border-radius:14px;
   color:white;
+  font-weight:bold;
 }
 
 /* 顏色 */
@@ -79,52 +97,85 @@ button.action {
 .btn2 { background:#1e90ff; }
 .btn3 { background:#2ed573; }
 .btn4 { background:#ffa502; }
-.btn5 { background:#8e44ad; }
-.btn6 { background:#16a085; }
+.btn5 { background:#a55eea; }
+.btn6 { background:#2f3542; }
+.btn7 { background:#00c3ff; }
 
-/* 聊天區 */
+/* 手動輸入 */
+.manual {
+  padding:12px;
+  display:flex;
+  gap:8px;
+}
+
+.manual input {
+  flex:1;
+  padding:12px;
+  font-size:16px;
+}
+
+.manual button {
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#57606f;
+  color:white;
+}
+
+/* 訊息區 */
 #chat {
-  padding:10px;
-  height:55vh;
+  padding:12px;
+  height:45vh;
   overflow-y:auto;
 }
 
-/* 訊息卡片 */
+/* 訊息 */
 .msg {
   background:white;
-  padding:10px;
+  padding:12px;
   margin-bottom:10px;
-  border-radius:10px;
-  box-shadow:0 2px 5px rgba(0,0,0,0.1);
+  border-radius:12px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
 }
 
 .name {
   font-weight:bold;
+  min-width:70px;
+}
+
+.action {
+  flex:1;
 }
 
 .time {
   font-size:12px;
   color:gray;
+  min-width:70px;
+  text-align:right;
 }
 
-/* 上方工具列 */
-.tools {
-  display:flex;
-  justify-content:center;
-  gap:10px;
-  padding:10px;
-}
-.tools button{
-  padding:8px 12px;
-  border:none;
-  border-radius:8px;
+a {
+  font-size:14px;
+  color:#1e90ff;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">📍 派車即時回報-機場出發</div>
+<div class="header">
+📍 派車即時回報
+<div class="online" id="online">🟢 在線：0人</div>
+
+<button class="clear-btn" onclick="clearLogs()">清空</button>
+</div>
 
 <!-- 登入 -->
 <div id="login">
@@ -136,30 +187,28 @@ button.action {
 <!-- 主畫面 -->
 <div id="main">
 
-  <!-- 工具列 -->
-  <div class="tools">
-    <button onclick="enableSound()">🔔 開啟聲音</button>
-    <button onclick="clearChat()">🧹 清空</button>
-  </div>
+<div class="buttons">
+  <button class="action btn1" onclick="send('離開機場 ✈️')">離開機場</button>
+  <button class="action btn2" onclick="send('往碼頭 🚢')">往碼頭</button>
+  <button class="action btn3" onclick="send('往廣場 🏢')">往廣場</button>
+  <button class="action btn4" onclick="send('往飯店 🏨')">往飯店</button>
+  <button class="action btn5" onclick="send('經武酒窖')">經武酒窖</button>
+  <button class="action btn6" onclick="send('山外圓環')">山外圓環</button>
+  <button class="action btn7" onclick="sendGPS()">📍 GPS回報</button>
+</div>
 
-  <!-- 按鈕 -->
-  <div class="buttons">
-    <button class="action btn1" onclick="send('離開機場 ✈️')">離開機場</button>
-    <button class="action btn2" onclick="send('往碼頭 🚢')">往碼頭</button>
-    <button class="action btn3" onclick="send('往廣場 🏢')">往廣場</button>
-    <button class="action btn4" onclick="send('往飯店 🏨')">往飯店</button>
-    <button class="action btn5" onclick="send('經武酒窖')">經武酒窖</button>
-    <button class="action btn6" onclick="send('山外圓環')">山外圓環</button>
-  </div>
+<!-- 📝 手動輸入 -->
+<div class="manual">
+  <input id="manualText" placeholder="手動輸入回報...">
+  <button onclick="sendManual()">送出</button>
+</div>
 
-  <!-- 聊天 -->
-  <div id="chat"></div>
+<div id="chat"></div>
 
 </div>
 
 <script>
 
-// Firebase 設定
 const firebaseConfig = {
   apiKey: "AIzaSyAnMOwK8Awcu_hxdyUjml8o88Anznd9m3Q",
   authDomain: "test-c845c.firebaseapp.com",
@@ -174,22 +223,10 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let username = "";
+let messages = [];
 let lastClick = 0;
 
-// 🔔 聲音
-let audio = new Audio("https://www.soundjay.com/buttons/sound/beep-07.mp3");
-let soundEnabled = false;
-
-function enableSound(){
-  audio.play().then(()=>{
-    soundEnabled = true;
-    alert("聲音已啟用");
-  }).catch(()=>{
-    alert("請再點一次啟用聲音");
-  });
-}
-
-// 記住名字
+/* 登入 */
 window.onload = function(){
   let saved = localStorage.getItem("name");
   if(saved){
@@ -197,7 +234,6 @@ window.onload = function(){
   }
 }
 
-// 登入
 function start(){
   username = document.getElementById("name").value;
 
@@ -210,10 +246,13 @@ function start(){
 
   document.getElementById("login").style.display="none";
   document.getElementById("main").style.display="block";
+
+  setOnline();
 }
 
-// 發送
+/* 固定回報 */
 function send(action){
+
   let now = Date.now();
 
   if(now - lastClick < 2000){
@@ -226,40 +265,118 @@ function send(action){
   db.ref("logs").push({
     user: username,
     action: action,
-    time: new Date().toLocaleTimeString()
+    time: new Date().toLocaleTimeString(),
+    ts: now
   });
 }
 
-// 清空
-function clearChat(){
-  let pwd = prompt("輸入清除密碼");
-  if(pwd === "338888"){
-    db.ref("logs").remove();
+/* 📝 手動輸入 */
+function sendManual(){
+
+  let text = document.getElementById("manualText").value;
+
+  if(!text){
+    alert("請輸入內容");
+    return;
   }
+
+  db.ref("logs").push({
+    user: username,
+    action: "📝 " + text,
+    time: new Date().toLocaleTimeString(),
+    ts: Date.now()
+  });
+
+  document.getElementById("manualText").value = "";
 }
 
-// 即時監聽
-db.ref("logs").limitToLast(50).on("child_added", snapshot => {
-  let d = snapshot.val();
+/* 📍 GPS */
+function sendGPS(){
 
-  if(soundEnabled){
-    audio.play();
-  }
+  navigator.geolocation.getCurrentPosition(pos => {
+
+    db.ref("logs").push({
+      user: username,
+      action: "📍 GPS回報",
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      time: new Date().toLocaleTimeString(),
+      ts: Date.now()
+    });
+
+  });
+}
+
+/* 🟢 在線 */
+function setOnline(){
+  let ref = db.ref("online/" + username);
+  ref.set(true);
+  ref.onDisconnect().remove();
+}
+
+db.ref("online").on("value", snap => {
+  document.getElementById("online").innerText =
+    `🟢 在線：${snap.numChildren()}人`;
+});
+
+/* 訊息 */
+db.ref("logs").limitToLast(50).on("child_added", snap => {
+
+  messages.push(snap.val());
+
+  messages.sort((a,b) => b.ts - a.ts);
+
+  render();
+});
+
+function render(){
 
   let div = document.getElementById("chat");
+  div.innerHTML = "";
 
-  let msg = document.createElement("div");
-  msg.className = "msg";
+  messages.forEach(d => {
 
-  msg.innerHTML = `
-    <div class="name">${d.user}</div>
-    <div>${d.action}</div>
-    <div class="time">${d.time}</div>
-  `;
+    let gps = "";
 
-  div.appendChild(msg);
-  div.scrollTop = div.scrollHeight;
-});
+    if(d.lat && d.lng){
+      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">
+      📍 查看地圖</a>`;
+    }
+
+    let msg = document.createElement("div");
+    msg.className = "msg";
+
+    msg.innerHTML = `
+      <div class="row">
+        <span class="name">${d.user}</span>
+        <span class="action">${d.action}</span>
+        <span class="time">${d.time}</span>
+      </div>
+      ${gps}
+    `;
+
+    div.appendChild(msg);
+  });
+}
+
+/* 🧹 清空（密碼 338888） */
+function clearLogs(){
+
+  let pwd = prompt("請輸入管理密碼");
+
+  if(pwd !== "338888"){
+    alert("密碼錯誤");
+    return;
+  }
+
+  if(confirm("確定清空所有訊息？")){
+    db.ref("logs").remove().then(() => {
+      messages = [];
+      document.getElementById("chat").innerHTML = "";
+      alert("已清空");
+    });
+  }
+}
 
 </script>
 
