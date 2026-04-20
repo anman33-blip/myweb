@@ -228,9 +228,18 @@ function start(){
 /* 聲音 */
 function playSound(){
   let audio = document.getElementById("notifySound");
+
+  // 第一下
   audio.currentTime = 0;
   audio.play().catch(()=>{});
+
+  // 第二下（間隔 250ms）
+  setTimeout(() => {
+    audio.currentTime = 0;
+    audio.play().catch(()=>{});
+  }, 250);
 }
+
 
 /* 發送 */
 function send(action){
