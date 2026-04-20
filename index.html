@@ -17,7 +17,7 @@ body {
   font-size:18px;
 }
 
-/* 🔥 標題列改成左右 */
+/* 標題 */
 .header {
   background:#2f3542;
   color:white;
@@ -25,35 +25,18 @@ body {
   display:flex;
   justify-content:space-between;
   align-items:center;
-  font-size:18px;
 }
 
-.leftTitle {
-  font-weight:bold;
-}
-
+/* 在線 */
 .online {
   font-size:14px;
   color:#2ed573;
 }
 
 /* 按鈕 */
-.header-actions {
-  display:flex;
-  gap:6px;
-}
-
-.small-btn {
-  padding:6px 10px;
-  font-size:12px;
-  border:none;
-  border-radius:8px;
-  color:white;
+button {
   cursor:pointer;
 }
-
-.clear-btn { background:#ff4757; }
-.logout-btn { background:#57606f; }
 
 /* 登入 */
 #login {
@@ -76,9 +59,9 @@ input {
   background:#3742fa;
   color:white;
   border-radius:10px;
-  font-size:18px;
 }
 
+/* 主畫面 */
 #main { display:none; }
 
 /* 按鈕區 */
@@ -95,7 +78,6 @@ button.action {
   border:none;
   border-radius:14px;
   color:white;
-  font-weight:bold;
 }
 
 .btn1 { background:#ff4757; }
@@ -106,7 +88,7 @@ button.action {
 .btn6 { background:#2f3542; }
 .btn7 { background:#00c3ff; }
 
-/* 手動輸入 */
+/* 手動 */
 .manual {
   padding:12px;
   display:flex;
@@ -116,7 +98,6 @@ button.action {
 .manual input {
   flex:1;
   padding:12px;
-  font-size:16px;
 }
 
 .manual button {
@@ -142,35 +123,51 @@ button.action {
   box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
+/* ⭐ 最新訊息高亮 */
+.msg.latest {
+  background:#e8f4ff;
+  border-left:5px solid #1e90ff;
+}
+
 .row {
   display:flex;
   justify-content:space-between;
   align-items:center;
-  gap:10px;
+  gap:8px;
 }
 
-.name { font-weight:bold; min-width:70px; }
-.action { flex:1; }
-.time { font-size:12px; color:gray; min-width:70px; text-align:right; }
+.name {
+  font-weight:bold;
+  min-width:60px;
+}
 
-a { font-size:14px; color:#1e90ff; }
+.action { flex:1; }
+
+.time {
+  font-size:12px;
+  color:gray;
+  min-width:120px;
+  text-align:right;
+}
+
+/* 重送按鈕 */
+.retry {
+  margin-top:6px;
+  font-size:12px;
+  padding:4px 8px;
+  border:none;
+  background:#ff4757;
+  color:white;
+  border-radius:6px;
+}
 </style>
 </head>
 
 <body>
 
-<!-- 🔥 標題列（同一列） -->
 <div class="header">
-  <div class="leftTitle">📍 派車即時回報</div>
-
-  <div style="display:flex; align-items:center; gap:10px;">
-    <div class="online" id="online">🟢 在線：0人</div>
-
-    <div class="header-actions">
-      <button class="small-btn clear-btn" onclick="clearLogs()">清空</button>
-      <button class="small-btn logout-btn" onclick="logout()">退出</button>
-    </div>
-  </div>
+  <div>📍 派車即時回報</div>
+  <div class="online" id="online">🟢 在線：0人</div>
 </div>
 
 <!-- 登入 -->
@@ -202,7 +199,6 @@ a { font-size:14px; color:#1e90ff; }
 
 </div>
 
-<!-- 音效 -->
 <audio id="notifySound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
@@ -220,30 +216,34 @@ const db = firebase.database();
 let username = "";
 let messages = [];
 let lastClick = 0;
-let firstLoad = true;
 
-/* 🔊 聲音 */
+/* 🔊 1秒只響一次 */
+let lastSoundTime = 0;
+
 function playSound(){
-  let audio = document.getElementById("notifySound");
+  let now = Date.now();
+  if(now - lastSoundTime < 1000) return;
 
+  lastSoundTime = now;
+
+  let audio = document.getElementById("notifySound");
   audio.currentTime = 0;
   audio.play().catch(()=>{});
 
   setTimeout(()=>{
     audio.currentTime = 0;
     audio.play().catch(()=>{});
-  }, 250);
+  }, 200);
 }
 
-/* 登入（含自動登入） */
+/* 登入 */
 window.onload = function(){
-
   let saved = localStorage.getItem("name");
 
   if(saved){
     document.getElementById("name").value = saved;
-
     username = saved;
+
     document.getElementById("login").style.display="none";
     document.getElementById("main").style.display="block";
 
@@ -251,9 +251,7 @@ window.onload = function(){
   }
 }
 
-/* 進入 */
 function start(){
-
   username = document.getElementById("name").value;
 
   if(!username){
@@ -269,18 +267,13 @@ function start(){
   setOnline();
 }
 
-/* 🚪 退出系統 */
-function logout(){
-
-  localStorage.removeItem("name");
-
-  username = "";
-
-  document.getElementById("main").style.display="none";
-  document.getElementById("login").style.display="block";
+/* 日期時間 */
+function getTime(){
+  let d = new Date();
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${d.toLocaleTimeString()}`;
 }
 
-/* 發送 */
+/* 發送（失敗可重送） */
 function send(action){
 
   let now = Date.now();
@@ -292,11 +285,25 @@ function send(action){
 
   lastClick = now;
 
-  db.ref("logs").push({
+  let data = {
     user: username,
     action: action,
-    time: new Date().toLocaleTimeString(),
+    time: getTime(),
     ts: now
+  };
+
+  db.ref("logs").push(data)
+  .catch(err => {
+
+    alert("❌ 傳送失敗");
+
+    // 存本地可重送
+    let retryData = JSON.stringify(data);
+    let btn = confirm("是否重新發送？");
+
+    if(btn){
+      db.ref("logs").push(data);
+    }
   });
 }
 
@@ -304,72 +311,27 @@ function send(action){
 function sendManual(){
 
   let text = document.getElementById("manualText").value;
-
   if(!text) return;
 
-  db.ref("logs").push({
-    user: username,
-    action: "📝 " + text,
-    time: new Date().toLocaleTimeString(),
-    ts: Date.now()
-  });
-
+  send("📝 " + text);
   document.getElementById("manualText").value = "";
 }
 
 /* GPS */
 function sendGPS(){
 
-  if(!navigator.geolocation){
-    alert("此裝置不支援GPS");
-    return;
-  }
+  navigator.geolocation.getCurrentPosition(pos => {
 
-  navigator.geolocation.getCurrentPosition(
-  
-    function(pos){
+    db.ref("logs").push({
+      user: username,
+      action: "📍 GPS回報",
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      time: getTime(),
+      ts: Date.now()
+    });
 
-      db.ref("logs").push({
-        user: username,
-        action: "📍 GPS回報",
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        time: new Date().toLocaleTimeString(),
-        ts: Date.now()
-      });
-
-    },
-
-    function(error){
-
-      // 🔥 Safari會靠這裡回報錯誤
-      let msg = "";
-
-      switch(error.code){
-        case 1:
-          msg = "❌ 未允許定位權限";
-          break;
-        case 2:
-          msg = "❌ 無法取得位置（GPS關閉或訊號差）";
-          break;
-        case 3:
-          msg = "❌ 取得位置超時";
-          break;
-        default:
-          msg = "❌ GPS未知錯誤";
-      }
-
-      alert(msg);
-      console.log(error);
-    },
-
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    }
-
-  );
+  });
 }
 
 /* 在線 */
@@ -390,28 +352,32 @@ db.ref("logs").limitToLast(50).on("child_added", snap => {
   messages.push(snap.val());
   messages.sort((a,b)=>b.ts-a.ts);
 
-  if(!firstLoad){
-    playSound();
-  }
+  playSound();
 
   render();
 });
 
+/* render */
 function render(){
 
   let div = document.getElementById("chat");
   div.innerHTML = "";
 
-  messages.forEach(d => {
+  messages.forEach((d, index) => {
 
     let gps = "";
 
     if(d.lat){
-      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">📍 查看地圖</a>`;
+      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">📍 地圖</a>`;
     }
 
     let msg = document.createElement("div");
     msg.className = "msg";
+
+    /* ⭐ 最新高亮 */
+    if(index === 0){
+      msg.classList.add("latest");
+    }
 
     msg.innerHTML = `
       <div class="row">
@@ -424,23 +390,6 @@ function render(){
 
     div.appendChild(msg);
   });
-
-  firstLoad = false;
-}
-
-/* 清空 */
-function clearLogs(){
-
-  let pwd = prompt("請輸入管理密碼");
-
-  if(pwd !== "338888"){
-    alert("密碼錯誤");
-    return;
-  }
-
-  db.ref("logs").remove();
-  messages = [];
-  document.getElementById("chat").innerHTML = "";
 }
 
 </script>
