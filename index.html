@@ -17,7 +17,6 @@ body {
   font-size:18px;
 }
 
-/* 標題 */
 .header {
   background:#2f3542;
   color:white;
@@ -33,7 +32,6 @@ body {
   color:#2ed573;
 }
 
-/* 清空按鈕 */
 .clear-btn {
   position:absolute;
   right:10px;
@@ -46,7 +44,6 @@ body {
   color:white;
 }
 
-/* 登入 */
 #login {
   text-align:center;
   margin-top:60px;
@@ -70,12 +67,8 @@ input {
   font-size:18px;
 }
 
-/* 主畫面 */
-#main {
-  display:none;
-}
+#main { display:none; }
 
-/* 按鈕 */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -92,7 +85,6 @@ button.action {
   font-weight:bold;
 }
 
-/* 顏色 */
 .btn1 { background:#ff4757; }
 .btn2 { background:#1e90ff; }
 .btn3 { background:#2ed573; }
@@ -101,7 +93,6 @@ button.action {
 .btn6 { background:#2f3542; }
 .btn7 { background:#00c3ff; }
 
-/* 手動輸入 */
 .manual {
   padding:12px;
   display:flex;
@@ -122,14 +113,12 @@ button.action {
   color:white;
 }
 
-/* 訊息區 */
 #chat {
   padding:12px;
   height:45vh;
   overflow-y:auto;
 }
 
-/* 訊息 */
 .msg {
   background:white;
   padding:12px;
@@ -150,9 +139,7 @@ button.action {
   min-width:70px;
 }
 
-.action {
-  flex:1;
-}
+.action { flex:1; }
 
 .time {
   font-size:12px;
@@ -173,18 +160,15 @@ a {
 <div class="header">
 📍 派車即時回報
 <div class="online" id="online">🟢 在線：0人</div>
-
 <button class="clear-btn" onclick="clearLogs()">清空</button>
 </div>
 
-<!-- 登入 -->
 <div id="login">
   <input id="name" placeholder="輸入名字">
   <br>
   <button class="login-btn" onclick="start()">進入系統</button>
 </div>
 
-<!-- 主畫面 -->
 <div id="main">
 
 <div class="buttons">
@@ -197,7 +181,6 @@ a {
   <button class="action btn7" onclick="sendGPS()">📍 GPS回報</button>
 </div>
 
-<!-- 📝 手動輸入 -->
 <div class="manual">
   <input id="manualText" placeholder="手動輸入回報...">
   <button onclick="sendManual()">送出</button>
@@ -207,16 +190,16 @@ a {
 
 </div>
 
+<!-- 🔊 音效 -->
+<audio id="notifySound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
 <script>
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAnMOwK8Awcu_hxdyUjml8o88Anznd9m3Q",
+  apiKey: "AIzaSy...",
   authDomain: "test-c845c.firebaseapp.com",
   databaseURL: "https://test-c845c-default-rtdb.firebaseio.com",
-  projectId: "test-c845c",
-  storageBucket: "test-c845c.firebasestorage.app",
-  messagingSenderId: "126005172872",
-  appId: "1:126005172872:web:f3eca6affd5d09d0e59d3d"
+  projectId: "test-c845c"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -225,15 +208,9 @@ const db = firebase.database();
 let username = "";
 let messages = [];
 let lastClick = 0;
+let firstLoad = true;
 
 /* 登入 */
-window.onload = function(){
-  let saved = localStorage.getItem("name");
-  if(saved){
-    document.getElementById("name").value = saved;
-  }
-}
-
 function start(){
   username = document.getElementById("name").value;
 
@@ -242,17 +219,21 @@ function start(){
     return;
   }
 
-  localStorage.setItem("name", username);
-
   document.getElementById("login").style.display="none";
   document.getElementById("main").style.display="block";
 
   setOnline();
 }
 
-/* 固定回報 */
-function send(action){
+/* 聲音 */
+function playSound(){
+  let audio = document.getElementById("notifySound");
+  audio.currentTime = 0;
+  audio.play().catch(()=>{});
+}
 
+/* 發送 */
+function send(action){
   let now = Date.now();
 
   if(now - lastClick < 2000){
@@ -270,15 +251,11 @@ function send(action){
   });
 }
 
-/* 📝 手動輸入 */
+/* 手動 */
 function sendManual(){
-
   let text = document.getElementById("manualText").value;
 
-  if(!text){
-    alert("請輸入內容");
-    return;
-  }
+  if(!text) return;
 
   db.ref("logs").push({
     user: username,
@@ -290,11 +267,9 @@ function sendManual(){
   document.getElementById("manualText").value = "";
 }
 
-/* 📍 GPS */
+/* GPS */
 function sendGPS(){
-
   navigator.geolocation.getCurrentPosition(pos => {
-
     db.ref("logs").push({
       user: username,
       action: "📍 GPS回報",
@@ -303,11 +278,10 @@ function sendGPS(){
       time: new Date().toLocaleTimeString(),
       ts: Date.now()
     });
-
   });
 }
 
-/* 🟢 在線 */
+/* 在線 */
 function setOnline(){
   let ref = db.ref("online/" + username);
   ref.set(true);
@@ -323,24 +297,25 @@ db.ref("online").on("value", snap => {
 db.ref("logs").limitToLast(50).on("child_added", snap => {
 
   messages.push(snap.val());
+  messages.sort((a,b)=>b.ts-a.ts);
 
-  messages.sort((a,b) => b.ts - a.ts);
+  if(!firstLoad){
+    playSound();
+  }
 
   render();
 });
 
+/* 渲染 */
 function render(){
-
   let div = document.getElementById("chat");
   div.innerHTML = "";
 
   messages.forEach(d => {
 
     let gps = "";
-
-    if(d.lat && d.lng){
-      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">
-      📍 查看地圖</a>`;
+    if(d.lat){
+      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">📍 查看地圖</a>`;
     }
 
     let msg = document.createElement("div");
@@ -357,11 +332,12 @@ function render(){
 
     div.appendChild(msg);
   });
+
+  firstLoad = false;
 }
 
-/* 🧹 清空（密碼 338888） */
+/* 清空 */
 function clearLogs(){
-
   let pwd = prompt("請輸入管理密碼");
 
   if(pwd !== "338888"){
@@ -369,12 +345,10 @@ function clearLogs(){
     return;
   }
 
-  if(confirm("確定清空所有訊息？")){
-    db.ref("logs").remove().then(() => {
-      messages = [];
-      document.getElementById("chat").innerHTML = "";
-      alert("已清空");
-    });
+  if(confirm("確定清空？")){
+    db.ref("logs").remove();
+    messages = [];
+    document.getElementById("chat").innerHTML = "";
   }
 }
 
