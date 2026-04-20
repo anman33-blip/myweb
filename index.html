@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>即時回報系統</title>
+<title>派車即時回報系統</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
@@ -16,6 +16,7 @@ body {
   background:#f5f6fa;
   font-size:18px;
 }
+
 .header {
   background:#2f3542;
   color:white;
@@ -162,12 +163,14 @@ a {
 <button class="clear-btn" onclick="clearLogs()">清空</button>
 </div>
 
+<!-- 登入 -->
 <div id="login">
   <input id="name" placeholder="輸入名字">
   <br>
   <button class="login-btn" onclick="start()">進入系統</button>
 </div>
 
+<!-- 主畫面 -->
 <div id="main">
 
 <div class="buttons">
@@ -209,8 +212,38 @@ let messages = [];
 let lastClick = 0;
 let firstLoad = true;
 
+/* 🔊 嗶嗶兩聲 */
+function playSound(){
+  let audio = document.getElementById("notifySound");
+
+  audio.currentTime = 0;
+  audio.play().catch(()=>{});
+
+  setTimeout(()=>{
+    audio.currentTime = 0;
+    audio.play().catch(()=>{});
+  }, 250);
+}
+
+/* 🚀 自動登入 */
+window.onload = function(){
+
+  let saved = localStorage.getItem("name");
+
+  if(saved){
+    document.getElementById("name").value = saved;
+
+    username = saved;
+    document.getElementById("login").style.display="none";
+    document.getElementById("main").style.display="block";
+
+    setOnline();
+  }
+}
+
 /* 登入 */
 function start(){
+
   username = document.getElementById("name").value;
 
   if(!username){
@@ -218,30 +251,17 @@ function start(){
     return;
   }
 
+  localStorage.setItem("name", username);
+
   document.getElementById("login").style.display="none";
   document.getElementById("main").style.display="block";
 
   setOnline();
 }
 
-/* 聲音 */
-function playSound(){
-  let audio = document.getElementById("notifySound");
-
-  // 第一下
-  audio.currentTime = 0;
-  audio.play().catch(()=>{});
-
-  // 第二下（間隔 250ms）
-  setTimeout(() => {
-    audio.currentTime = 0;
-    audio.play().catch(()=>{});
-  }, 250);
-}
-
-
 /* 發送 */
 function send(action){
+
   let now = Date.now();
 
   if(now - lastClick < 2000){
@@ -261,6 +281,7 @@ function send(action){
 
 /* 手動 */
 function sendManual(){
+
   let text = document.getElementById("manualText").value;
 
   if(!text) return;
@@ -277,7 +298,9 @@ function sendManual(){
 
 /* GPS */
 function sendGPS(){
+
   navigator.geolocation.getCurrentPosition(pos => {
+
     db.ref("logs").push({
       user: username,
       action: "📍 GPS回報",
@@ -286,6 +309,7 @@ function sendGPS(){
       time: new Date().toLocaleTimeString(),
       ts: Date.now()
     });
+
   });
 }
 
@@ -314,16 +338,19 @@ db.ref("logs").limitToLast(50).on("child_added", snap => {
   render();
 });
 
-/* 渲染 */
+/* render */
 function render(){
+
   let div = document.getElementById("chat");
   div.innerHTML = "";
 
   messages.forEach(d => {
 
     let gps = "";
+
     if(d.lat){
-      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">📍 查看地圖</a>`;
+      gps = `<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">
+      📍 查看地圖</a>`;
     }
 
     let msg = document.createElement("div");
@@ -346,6 +373,7 @@ function render(){
 
 /* 清空 */
 function clearLogs(){
+
   let pwd = prompt("請輸入管理密碼");
 
   if(pwd !== "338888"){
