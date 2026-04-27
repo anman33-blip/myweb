@@ -28,7 +28,6 @@ body {
 
 #userNow {
   font-size:14px;
-  color:white;
   opacity:0.9;
 }
 
@@ -144,12 +143,14 @@ button.action {
 .name { font-weight:bold; min-width:60px; }
 .action { flex:1; }
 
+/* ⭐ 這裡是重點：支援三行換行 */
 .time {
   font-size:12px;
   color:gray;
-  min-width:130px;
+  min-width:140px;
   text-align:right;
   white-space:pre-line;
+  line-height:1.2;
 }
 
 .recycle-btn {
@@ -234,36 +235,30 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let username = "";
-let lastClick = 0;
-let messages = {};
-let undoTimers = {};
+let username="";
+let messages={};
+let lastClick=0;
 
 /* 登入 */
-window.onload = function(){
-  let saved = localStorage.getItem("name");
-
+window.onload=function(){
+  let saved=localStorage.getItem("name");
   if(saved){
-    username = saved;
-    document.getElementById("name").value = saved;
-
+    username=saved;
+    document.getElementById("name").value=saved;
     document.getElementById("login").style.display="none";
     document.getElementById("main").style.display="block";
-
-    document.getElementById("userNow").innerText = "👤 " + username;
+    document.getElementById("userNow").innerText="👤 "+username;
   }
 }
 
 function start(){
-  username = document.getElementById("name").value;
-  if(!username) return alert("請輸入名字");
+  username=document.getElementById("name").value;
+  if(!username) return alert("輸入名字");
 
-  localStorage.setItem("name", username);
-
+  localStorage.setItem("name",username);
   document.getElementById("login").style.display="none";
   document.getElementById("main").style.display="block";
-
-  document.getElementById("userNow").innerText = "👤 " + username;
+  document.getElementById("userNow").innerText="👤 "+username;
 }
 
 function logout(){
@@ -273,134 +268,98 @@ function logout(){
 
 /* 發送 */
 function send(action){
-
-  let now = Date.now();
-  if(now - lastClick < 2000) return;
-  lastClick = now;
+  if(Date.now()-lastClick<1500) return;
+  lastClick=Date.now();
 
   db.ref("logs").push({
-    user: username,
-    action: action,
-    ts: now,
-    time: new Date().toLocaleString(),
-    deleted: false
+    user:username,
+    action,
+    ts:Date.now(),
+    deleted:false
   });
 }
 
 /* 手動 */
 function sendManual(){
-  let text = document.getElementById("manualText").value.trim();
-  if(!text) return;
-  send("📝 " + text);
+  let t=document.getElementById("manualText").value.trim();
+  if(!t) return;
+  send("📝 "+t);
   document.getElementById("manualText").value="";
 }
 
-/* GPS（已修復連結資料） */
+/* GPS */
 function sendGPS(){
-
   navigator.geolocation.getCurrentPosition(pos=>{
-
     db.ref("logs").push({
-      user: username,
+      user:username,
       action:"📍 GPS回報",
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
-      ts: Date.now(),
-      time: new Date().toLocaleString(),
-      deleted: false
+      lat:pos.coords.latitude,
+      lng:pos.coords.longitude,
+      ts:Date.now(),
+      deleted:false
     });
-
   });
-
 }
 
 /* 讀取 */
-db.ref("logs").on("value", snap=>{
-  messages = snap.val() || {};
+db.ref("logs").on("value",snap=>{
+  messages=snap.val()||{};
   render();
 });
 
-/* 回收（倒數3秒） */
-function revoke(key){
+/* ⭐ 時間計算 */
+function formatAgo(ts){
 
-  let item = messages[key];
-  if(!item) return;
+  let diff=Math.floor((Date.now()-ts)/1000);
 
-  if(item.user !== username){
-    alert("只能刪除自己訊息");
-    return;
+  if(diff<60){
+    return diff+"秒前";
   }
 
-  if(!confirm("是否刪除？")) return;
+  let m=Math.floor(diff/60);
 
-  db.ref("logs/"+key).update({deleted:true});
+  if(m<60){
+    return m+"分鐘前";
+  }
 
-  let timeLeft = 3;
-
-  let bar = document.createElement("div");
-  bar.className="undo-bar";
-
-  let btn = document.createElement("button");
-  btn.innerText="取消 ("+timeLeft+")";
-
-  btn.onclick=function(){
-    clearInterval(timer);
-    undo(key);
-    bar.remove();
-  };
-
-  bar.innerHTML="已刪除 ";
-  bar.appendChild(btn);
-
-  document.getElementById("chat").prepend(bar);
-
-  let timer = setInterval(()=>{
-
-    timeLeft--;
-
-    if(timeLeft<=0){
-      clearInterval(timer);
-      bar.remove();
-      return;
-    }
-
-    btn.innerText="取消 ("+timeLeft+")";
-
-  },1000);
+  let h=Math.floor(m/60);
+  return h+"小時前";
 }
 
-/* 取消 */
-function undo(key){
-  db.ref("logs/"+key).update({deleted:false});
-}
-
-/* render（⭐ GPS修復點在這） */
+/* render */
 function render(){
 
-  let div = document.getElementById("chat");
-  div.innerHTML = "";
+  let div=document.getElementById("chat");
+  div.innerHTML="";
 
-  let arr = Object.entries(messages);
-  arr.sort((a,b)=>b[1].ts - a[1].ts);
+  let arr=Object.entries(messages);
+  arr.sort((a,b)=>b[1].ts-a[1].ts);
 
   arr.forEach(([key,d],i)=>{
 
     if(d.deleted) return;
 
-    let gps = "";
+    let date=new Date(d.ts);
 
-    // ⭐ 修復：加回地圖連結
-    if(d.lat && d.lng){
-      gps = `
-        <div style="margin-top:5px;font-size:13px;">
-          📍 <a target="_blank" href="https://www.google.com/maps?q=${d.lat},${d.lng}">
-            開啟地圖
+    let dateStr=
+      date.getFullYear()+"/"+
+      String(date.getMonth()+1).padStart(2,'0')+"/"+
+      String(date.getDate()).padStart(2,'0');
+
+    let timeStr=date.toLocaleTimeString();
+
+    let gps="";
+
+    if(d.lat){
+      gps=`
+        <div style="font-size:12px;margin-top:5px;">
+          📍 <a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">
+            地圖
           </a>
-        </div>
-      `;
+        </div>`;
     }
 
-    let msg = document.createElement("div");
+    let msg=document.createElement("div");
     msg.className="msg";
     if(i===0) msg.classList.add("latest");
 
@@ -408,14 +367,15 @@ function render(){
       <div class="row">
         <span class="name">${d.user}</span>
         <span class="action">${d.action}</span>
-        <span class="time">${d.time}</span>
 
-        ${
-          d.user === username
-          ? `<button class="recycle-btn" onclick="revoke('${key}')">回收</button>`
-          : ""
-        }
+        <!-- ⭐ 三行時間 -->
+        <span class="time">
+${dateStr}
+${timeStr}
+${formatAgo(d.ts)}
+        </span>
       </div>
+
       ${gps}
     `;
 
@@ -425,8 +385,8 @@ function render(){
 
 /* 清空 */
 function clearLogs(){
-  let pwd = prompt("密碼");
-  if(pwd!=="338888") return alert("錯誤");
+  let pwd=prompt("密碼");
+  if(pwd!=="338888") return;
   db.ref("logs").remove();
 }
 
