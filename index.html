@@ -173,28 +173,8 @@ button.action {
 
 /* ⭐回收按鈕（自適應版） */
 .recycle-btn {
-  margin-left:6px;
-  font-size:11px;
-  padding:5px 6px;
-  border:none;
-  border-radius:8px;
-  background:#ff4757;
-  color:white;
-
-  /* ⭐強制換行核心 */
-  white-space:normal !important;
-  word-break:break-all;
-  overflow-wrap:anywhere;
-
-  /* ⭐讓它可以變成直向小方塊 */
-  width:28px;
-  line-height:1.1;
-  text-align:center;
-
-  /* ⭐右側對齊 */
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
 }
 
 /* 倒數條 */
