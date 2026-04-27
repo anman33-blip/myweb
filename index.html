@@ -163,6 +163,8 @@ button.action {
 }
 
 .undo-bar{
+  position:sticky;
+  bottom:0;
   background:#ffeaa7;
   padding:10px;
   margin:10px;
@@ -170,7 +172,6 @@ button.action {
   text-align:center;
   font-weight:bold;
 }
-
 .undo-bar button{
   margin-left:10px;
   padding:5px 10px;
@@ -217,6 +218,8 @@ button.action {
   <input id="manualText" placeholder="手動輸入回報...">
   <button onclick="sendManual()">送出</button>
 </div>
+
+<div id="undoBar" class="undo-bar" style="display:none;"></div>
 
 <div id="chat"></div>
 
@@ -309,14 +312,51 @@ db.ref("logs").on("value",snap=>{
 /* 時間 */
 function formatAgo(ts){
   let diff=Math.floor((Date.now()-ts)/1000);
-
   if(diff<60) return diff+"秒前";
   let m=Math.floor(diff/60);
   if(m<60) return m+"分鐘前";
   return Math.floor(m/60)+"小時前";
 }
 
-/* render（🔥已修回收按鈕） */
+/* 🔥 回收倒數 */
+let undoTimer=null;
+let undoKey=null;
+let undoCount=3;
+
+function revoke(key){
+
+  if(!confirm("確定回收？")) return;
+
+  undoKey=key;
+  undoCount=3;
+
+  let bar=document.getElementById("undoBar");
+  bar.style.display="block";
+
+  bar.innerHTML=`⏳ ${undoCount}秒後刪除 <button onclick="cancelUndo()">取消</button>`;
+
+  undoTimer=setInterval(()=>{
+
+    undoCount--;
+
+    if(undoCount<=0){
+      clearInterval(undoTimer);
+      db.ref("logs/"+undoKey).update({deleted:true});
+      bar.style.display="none";
+      return;
+    }
+
+    bar.innerHTML=`⏳ ${undoCount}秒後刪除 <button onclick="cancelUndo()">取消</button>`;
+
+  },1000);
+}
+
+function cancelUndo(){
+  clearInterval(undoTimer);
+  document.getElementById("undoBar").style.display="none";
+}
+
+/* render */
 function render(){
 
   let div=document.getElementById("chat");
@@ -341,12 +381,9 @@ function render(){
     let gps="";
 
     if(d.lat){
-      gps=`
-        <div style="font-size:12px;margin-top:5px;">
-          📍 <a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">
-            地圖
-          </a>
-        </div>`;
+      gps=`<div style="font-size:12px;margin-top:5px;">
+        📍 <a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">地圖</a>
+      </div>`;
     }
 
     let msg=document.createElement("div");
@@ -376,12 +413,6 @@ ${formatAgo(d.ts)}
 
     div.appendChild(msg);
   });
-}
-
-/* 回收 */
-function revoke(key){
-  if(!confirm("是否刪除？")) return;
-  db.ref("logs/"+key).update({deleted:true});
 }
 
 /* 清空 */
