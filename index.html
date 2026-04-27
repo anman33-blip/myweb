@@ -17,6 +17,7 @@ body {
   font-size:18px;
 }
 
+/* HEADER */
 .header {
   background:#2f3542;
   color:white;
@@ -47,6 +48,7 @@ body {
 .clear-btn { background:#ff4757; }
 .logout-btn { background:#57606f; }
 
+/* LOGIN */
 #login {
   text-align:center;
   margin-top:60px;
@@ -69,8 +71,10 @@ input {
   border-radius:10px;
 }
 
+/* MAIN */
 #main { display:none; }
 
+/* BUTTONS */
 .buttons {
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -95,6 +99,7 @@ button.action {
 .btn7 { background:#00c3ff; }
 .btn8 { background:#2ed573; }
 
+/* 手動輸入 */
 .manual {
   display:flex;
   gap:8px;
@@ -114,6 +119,7 @@ button.action {
   color:white;
 }
 
+/* CHAT */
 #chat {
   padding:12px;
   height:45vh;
@@ -133,60 +139,61 @@ button.action {
   border-left:4px solid #1e90ff;
 }
 
-/* row 改善手機排版 */
+/* row 排版 */
 .row {
   display:flex;
   justify-content:space-between;
   gap:8px;
-  align-items:flex-start;
+  align-items:center; /* ⭐置中 */
 }
 
+/* 名字 */
 .name {
   font-weight:bold;
   min-width:60px;
   white-space:nowrap;
 }
 
+/* 動作 */
 .action {
   flex:1;
   word-break:break-word;
+  min-width:0;
 }
 
+/* 時間 */
 .time {
   font-size:12px;
   color:gray;
   min-width:120px;
   text-align:right;
   white-space:pre-line;
-  line-height:1.3;
+  line-height:1.2;
 }
 
-/* 回收按鈕 */
+/* ⭐回收按鈕（自適應版） */
 .recycle-btn {
   margin-left:6px;
   font-size:11px;
-  padding:6px 6px;
+  padding:5px 8px;
   border:none;
   border-radius:8px;
   background:#ff4757;
   color:white;
 
-  /* ⭐關鍵：允許換行 */
+  width:auto;
+  min-width:36px;
+
   white-space:normal;
   word-break:break-word;
-  line-height:1.1;
 
-  /* ⭐縮小寬度 */
-  width:34px;
-
-  /* ⭐靠右 + 垂直置中 */
   display:flex;
   align-items:center;
   justify-content:center;
 }
 
-/* 倒數提示 */
-.undo-bar{
+/* 倒數條 */
+.undo-bar {
   position:sticky;
   bottom:0;
   background:#ffeaa7;
@@ -196,6 +203,7 @@ button.action {
   text-align:center;
   font-weight:bold;
 }
+
 .undo-bar button{
   margin-left:10px;
   padding:5px 10px;
