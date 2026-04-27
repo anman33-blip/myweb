@@ -26,9 +26,10 @@ body {
   align-items:center;
 }
 
-.online {
+#userNow {
   font-size:14px;
-  color:#2ed573;
+  color:white;
+  opacity:0.9;
 }
 
 .header-right {
@@ -161,7 +162,6 @@ button.action {
   color:white;
 }
 
-/* 倒數提示 */
 .undo-bar{
   background:#ffeaa7;
   padding:10px;
@@ -186,14 +186,11 @@ button.action {
 
 <div class="header">
   <div>📍 派車回報系統</div>
+  <div id="userNow">👤 未登入</div>
 
-  <div style="display:flex; align-items:center; gap:10px;">
-    <div class="online" id="online">🟢 在線：0</div>
-
-    <div class="header-right">
-      <button class="header-btn clear-btn" onclick="clearLogs()">清空</button>
-      <button class="header-btn logout-btn" onclick="logout()">退出</button>
-    </div>
+  <div class="header-right">
+    <button class="header-btn clear-btn" onclick="clearLogs()">清空</button>
+    <button class="header-btn logout-btn" onclick="logout()">退出</button>
   </div>
 </div>
 
@@ -245,22 +242,28 @@ let undoTimers = {};
 /* 登入 */
 window.onload = function(){
   let saved = localStorage.getItem("name");
+
   if(saved){
     username = saved;
+    document.getElementById("name").value = saved;
+
     document.getElementById("login").style.display="none";
     document.getElementById("main").style.display="block";
-    setOnline();
+
+    document.getElementById("userNow").innerText = "👤 " + username;
   }
 }
 
 function start(){
   username = document.getElementById("name").value;
-  if(!username){ alert("請輸入名字"); return; }
+  if(!username) return alert("請輸入名字");
 
   localStorage.setItem("name", username);
+
   document.getElementById("login").style.display="none";
   document.getElementById("main").style.display="block";
-  setOnline();
+
+  document.getElementById("userNow").innerText = "👤 " + username;
 }
 
 function logout(){
@@ -286,39 +289,30 @@ function send(action){
 
 /* 手動 */
 function sendManual(){
-  let input = document.getElementById("manualText");
-  let text = input.value.trim();
+  let text = document.getElementById("manualText").value.trim();
   if(!text) return;
-
   send("📝 " + text);
-  input.value = "";
+  document.getElementById("manualText").value="";
 }
 
-/* GPS */
+/* GPS（已修復連結資料） */
 function sendGPS(){
+
   navigator.geolocation.getCurrentPosition(pos=>{
+
     db.ref("logs").push({
       user: username,
       action:"📍 GPS回報",
-      lat:pos.coords.latitude,
-      lng:pos.coords.longitude,
-      ts:Date.now(),
-      time:new Date().toLocaleString(),
-      deleted:false
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      ts: Date.now(),
+      time: new Date().toLocaleString(),
+      deleted: false
     });
+
   });
-}
 
-/* 在線 */
-function setOnline(){
-  let ref = db.ref("online/"+username);
-  ref.set(true);
-  ref.onDisconnect().remove();
 }
-
-db.ref("online").on("value", snap=>{
-  document.getElementById("online").innerText="🟢 在線："+snap.numChildren();
-});
 
 /* 讀取 */
 db.ref("logs").on("value", snap=>{
@@ -326,11 +320,10 @@ db.ref("logs").on("value", snap=>{
   render();
 });
 
-/* 🔥 回收（倒數版） */
+/* 回收（倒數3秒） */
 function revoke(key){
 
   let item = messages[key];
-
   if(!item) return;
 
   if(item.user !== username){
@@ -348,30 +341,30 @@ function revoke(key){
   bar.className="undo-bar";
 
   let btn = document.createElement("button");
-  btn.innerText = "取消 ("+timeLeft+")";
+  btn.innerText="取消 ("+timeLeft+")";
 
-  btn.onclick = function(){
+  btn.onclick=function(){
     clearInterval(timer);
     undo(key);
     bar.remove();
   };
 
-  bar.innerHTML = "已刪除 ";
-
+  bar.innerHTML="已刪除 ";
   bar.appendChild(btn);
+
   document.getElementById("chat").prepend(bar);
 
   let timer = setInterval(()=>{
 
     timeLeft--;
 
-    if(timeLeft <= 0){
+    if(timeLeft<=0){
       clearInterval(timer);
       bar.remove();
       return;
     }
 
-    btn.innerText = "取消 ("+timeLeft+")";
+    btn.innerText="取消 ("+timeLeft+")";
 
   },1000);
 }
@@ -381,7 +374,7 @@ function undo(key){
   db.ref("logs/"+key).update({deleted:false});
 }
 
-/* render */
+/* render（⭐ GPS修復點在這） */
 function render(){
 
   let div = document.getElementById("chat");
@@ -393,6 +386,19 @@ function render(){
   arr.forEach(([key,d],i)=>{
 
     if(d.deleted) return;
+
+    let gps = "";
+
+    // ⭐ 修復：加回地圖連結
+    if(d.lat && d.lng){
+      gps = `
+        <div style="margin-top:5px;font-size:13px;">
+          📍 <a target="_blank" href="https://www.google.com/maps?q=${d.lat},${d.lng}">
+            開啟地圖
+          </a>
+        </div>
+      `;
+    }
 
     let msg = document.createElement("div");
     msg.className="msg";
@@ -410,6 +416,7 @@ function render(){
           : ""
         }
       </div>
+      ${gps}
     `;
 
     div.appendChild(msg);
