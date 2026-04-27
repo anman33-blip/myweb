@@ -137,11 +137,11 @@ button.action {
   display:flex;
   justify-content:space-between;
   gap:8px;
+  align-items:center;
 }
 
 .name { font-weight:bold; min-width:60px; }
 .action { flex:1; }
-
 .time {
   font-size:12px;
   color:gray;
@@ -158,6 +158,14 @@ button.action {
   border-radius:6px;
   background:#ff4757;
   color:white;
+}
+
+.undo-bar{
+  background:#ffeaa7;
+  padding:10px;
+  margin:10px;
+  border-radius:10px;
+  text-align:center;
 }
 </style>
 </head>
@@ -205,8 +213,6 @@ button.action {
 
 </div>
 
-<audio id="notifySound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-
 <script>
 
 const firebaseConfig = {
@@ -220,45 +226,9 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let username = "";
-let messages = [];
 let lastClick = 0;
-let lastSound = 0;
-
-/* 聲音 */
-function playSound(){
-  let now = Date.now();
-  if(now - lastSound < 1000) return;
-  lastSound = now;
-
-  let audio = document.getElementById("notifySound");
-  audio.currentTime = 0;
-  audio.play().catch(()=>{});
-  setTimeout(()=>{ audio.currentTime=0; audio.play().catch(()=>{}); },200);
-}
-
-/* 時間 */
-function getTime(){
-  let d = new Date();
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${d.toLocaleTimeString()}`;
-}
-
-/* format */
-function formatTime(d){
-
-  let date = new Date(d.ts);
-  let now = Date.now();
-  let diff = Math.floor((now - d.ts)/1000);
-
-  let ago = diff < 60 ? diff+"秒前" :
-            diff < 3600 ? Math.floor(diff/60)+"分鐘前" :
-            diff < 86400 ? Math.floor(diff/3600)+"小時前" :
-            Math.floor(diff/86400)+"天前";
-
-  let dateStr = `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,'0')}/${String(date.getDate()).padStart(2,'0')}`;
-  let timeStr = date.toLocaleTimeString();
-
-  return `${dateStr}\n${timeStr}\n(${ago})`;
-}
+let messages = {};
+let undoTimers = {};
 
 /* 登入 */
 window.onload = function(){
@@ -273,7 +243,7 @@ window.onload = function(){
 
 function start(){
   username = document.getElementById("name").value;
-  if(!username){ alert("請輸入名字"); return; }
+  if(!username){alert("請輸入名字");return;}
 
   localStorage.setItem("name", username);
   document.getElementById("login").style.display="none";
@@ -286,32 +256,27 @@ function logout(){
   location.reload();
 }
 
-/* ⭐ 修正後 send（不影響回收） */
+/* 發送 */
 function send(action){
 
   let now = Date.now();
-  if(now - lastClick < 2000){ alert("請勿連續點擊"); return; }
+  if(now - lastClick < 2000) return;
   lastClick = now;
 
   db.ref("logs").push({
     user: username,
     action: action,
-    time: getTime(),
-    ts: now
+    ts: now,
+    time: new Date().toLocaleString(),
+    deleted: false
   });
 }
 
-/* ⭐ 手動輸入（修正重點） */
+/* 手動 */
 function sendManual(){
-
   let input = document.getElementById("manualText");
   let text = input.value.trim();
-
-  if(text === ""){
-    alert("請輸入內容");
-    return;
-  }
-
+  if(!text) return;
   send("📝 " + text);
   input.value = "";
 }
@@ -321,18 +286,19 @@ function sendGPS(){
   navigator.geolocation.getCurrentPosition(pos=>{
     db.ref("logs").push({
       user: username,
-      action: "📍 GPS回報",
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
-      time: getTime(),
-      ts: Date.now()
+      action:"📍 GPS回報",
+      lat:pos.coords.latitude,
+      lng:pos.coords.longitude,
+      ts:Date.now(),
+      time:new Date().toLocaleString(),
+      deleted:false
     });
   });
 }
 
 /* 在線 */
 function setOnline(){
-  let ref = db.ref("online/" + username);
+  let ref = db.ref("online/"+username);
   ref.set(true);
   ref.onDisconnect().remove();
 }
@@ -341,84 +307,86 @@ db.ref("online").on("value", snap=>{
   document.getElementById("online").innerText="🟢 在線："+snap.numChildren();
 });
 
-/* 訊息 */
-db.ref("logs").limitToLast(50).on("child_added", snap=>{
-  messages.push(snap.val());
-  messages.sort((a,b)=>b.ts-a.ts);
-  playSound();
+/* 讀取 */
+db.ref("logs").on("value", snap=>{
+  messages = snap.val() || {};
   render();
 });
+
+/* 回收（刪除+3秒可取消） */
+function revoke(key){
+
+  let item = messages[key];
+
+  if(!item) return;
+
+  if(item.user !== username){
+    alert("只能刪除自己發送的訊息");
+    return;
+  }
+
+  if(!confirm("是否刪除？（3秒內可取消）")) return;
+
+  db.ref("logs/"+key).update({deleted:true});
+
+  let bar = document.createElement("div");
+  bar.className="undo-bar";
+  bar.innerHTML=`已刪除 3秒內可取消 <button onclick="undo('${key}')">取消</button>`;
+
+  document.getElementById("chat").prepend(bar);
+
+  undoTimers[key] = setTimeout(()=>{
+    bar.remove();
+    delete undoTimers[key];
+  },3000);
+}
+
+/* 取消刪除 */
+function undo(key){
+  db.ref("logs/"+key).update({deleted:false});
+}
 
 /* render */
 function render(){
 
-  let div=document.getElementById("chat");
-  div.innerHTML="";
+  let div = document.getElementById("chat");
+  div.innerHTML = "";
 
-  messages.forEach((d,i)=>{
+  let arr = Object.entries(messages);
 
-    let gps="";
-    if(d.lat){
-      gps=`<br><a target="_blank" href="https://maps.google.com/?q=${d.lat},${d.lng}">📍 地圖</a>`;
-    }
+  arr.sort((a,b)=>b[1].ts - a[1].ts);
 
-    let msg=document.createElement("div");
+  arr.forEach(([key,d],i)=>{
+
+    if(d.deleted) return;
+
+    let msg = document.createElement("div");
     msg.className="msg";
-    if(i===0)msg.classList.add("latest");
+    if(i===0) msg.classList.add("latest");
 
     msg.innerHTML=`
       <div class="row">
         <span class="name">${d.user}</span>
         <span class="action">${d.action}</span>
-        <span class="time">${formatTime(d)}</span>
-        <button class="recycle-btn" onclick="revoke(${d.ts})">回收</button>
+        <span class="time">${d.time}</span>
+
+        ${
+          d.user === username
+          ? `<button class="recycle-btn" onclick="revoke('${key}')">回收</button>`
+          : ""
+        }
       </div>
-      ${gps}
     `;
 
     div.appendChild(msg);
   });
 }
 
-/* 回收 */
-let recycleCache={};
-
-function revoke(ts){
-
-  if(!confirm("是否回收這則訊息？")) return;
-
-  let target = messages.find(m=>m.ts==ts);
-  if(!target) return;
-
-  target._deleted=true;
-  recycleCache[ts]=target;
-
-  render();
-
-  setTimeout(()=>{
-    delete recycleCache[ts];
-    render();
-  },5000);
-}
-
-/* 復原 */
-function restore(ts){
-  let data=recycleCache[ts];
-  if(!data)return;
-
-  data._deleted=false;
-  delete recycleCache[ts];
-  render();
-}
-
 /* 清空 */
 function clearLogs(){
-  let pwd=prompt("請輸入管理密碼");
-  if(pwd!=="338888"){alert("密碼錯誤");return;}
-
+  let pwd = prompt("密碼");
+  if(pwd!=="338888") return alert("錯誤");
   db.ref("logs").remove();
-  messages=[];
-  document.getElementById("chat").innerHTML="";
 }
 
 </script>
