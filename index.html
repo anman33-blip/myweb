@@ -150,7 +150,6 @@ button.action {
   white-space:pre-line;
 }
 
-/* 回收按鈕 */
 .recycle-btn {
   margin-left:5px;
   font-size:10px;
@@ -225,9 +224,6 @@ let messages = [];
 let lastClick = 0;
 let lastSound = 0;
 
-/* 回收暫存 */
-let recycleCache = {};
-
 /* 聲音 */
 function playSound(){
   let now = Date.now();
@@ -246,7 +242,7 @@ function getTime(){
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${d.toLocaleTimeString()}`;
 }
 
-/* 格式時間 */
+/* format */
 function formatTime(d){
 
   let date = new Date(d.ts);
@@ -265,10 +261,10 @@ function formatTime(d){
 }
 
 /* 登入 */
-window.onload=function(){
-  let saved=localStorage.getItem("name");
+window.onload = function(){
+  let saved = localStorage.getItem("name");
   if(saved){
-    username=saved;
+    username = saved;
     document.getElementById("login").style.display="none";
     document.getElementById("main").style.display="block";
     setOnline();
@@ -276,10 +272,10 @@ window.onload=function(){
 }
 
 function start(){
-  username=document.getElementById("name").value;
-  if(!username){alert("請輸入名字");return;}
+  username = document.getElementById("name").value;
+  if(!username){ alert("請輸入名字"); return; }
 
-  localStorage.setItem("name",username);
+  localStorage.setItem("name", username);
   document.getElementById("login").style.display="none";
   document.getElementById("main").style.display="block";
   setOnline();
@@ -290,82 +286,68 @@ function logout(){
   location.reload();
 }
 
-/* 發送 */
+/* ⭐ 修正後 send（不影響回收） */
 function send(action){
 
-  let now=Date.now();
-  if(now-lastClick<2000){alert("請勿連續點擊");return;}
-  lastClick=now;
+  let now = Date.now();
+  if(now - lastClick < 2000){ alert("請勿連續點擊"); return; }
+  lastClick = now;
 
   db.ref("logs").push({
-    user:username,
-    action:action,
-    time:getTime(),
-    ts:now
+    user: username,
+    action: action,
+    time: getTime(),
+    ts: now
   });
+}
+
+/* ⭐ 手動輸入（修正重點） */
+function sendManual(){
+
+  let input = document.getElementById("manualText");
+  let text = input.value.trim();
+
+  if(text === ""){
+    alert("請輸入內容");
+    return;
+  }
+
+  send("📝 " + text);
+  input.value = "";
 }
 
 /* GPS */
 function sendGPS(){
   navigator.geolocation.getCurrentPosition(pos=>{
     db.ref("logs").push({
-      user:username,
-      action:"📍 GPS回報",
-      lat:pos.coords.latitude,
-      lng:pos.coords.longitude,
-      time:getTime(),
-      ts:Date.now()
+      user: username,
+      action: "📍 GPS回報",
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      time: getTime(),
+      ts: Date.now()
     });
   });
 }
 
 /* 在線 */
 function setOnline(){
-  let ref=db.ref("online/"+username);
+  let ref = db.ref("online/" + username);
   ref.set(true);
   ref.onDisconnect().remove();
 }
 
-db.ref("online").on("value",snap=>{
+db.ref("online").on("value", snap=>{
   document.getElementById("online").innerText="🟢 在線："+snap.numChildren();
 });
 
 /* 訊息 */
-db.ref("logs").limitToLast(50).on("child_added",snap=>{
+db.ref("logs").limitToLast(50).on("child_added", snap=>{
   messages.push(snap.val());
   messages.sort((a,b)=>b.ts-a.ts);
   playSound();
   render();
 });
-
-/* 回收 */
-function revoke(ts){
-
-  if(!confirm("是否回收這則訊息？")) return;
-
-  let target=messages.find(m=>m.ts==ts);
-  if(!target) return;
-
-  target._deleted=true;
-  recycleCache[ts]=target;
-
-  render();
-
-  setTimeout(()=>{
-    delete recycleCache[ts];
-    render();
-  },5000);
-}
-
-/* 復原 */
-function restore(ts){
-  let data=recycleCache[ts];
-  if(!data)return;
-
-  data._deleted=false;
-  delete recycleCache[ts];
-  render();
-}
 
 /* render */
 function render(){
@@ -374,8 +356,6 @@ function render(){
   div.innerHTML="";
 
   messages.forEach((d,i)=>{
-
-    if(d._deleted) return;
 
     let gps="";
     if(d.lat){
@@ -398,6 +378,37 @@ function render(){
 
     div.appendChild(msg);
   });
+}
+
+/* 回收 */
+let recycleCache={};
+
+function revoke(ts){
+
+  if(!confirm("是否回收這則訊息？")) return;
+
+  let target = messages.find(m=>m.ts==ts);
+  if(!target) return;
+
+  target._deleted=true;
+  recycleCache[ts]=target;
+
+  render();
+
+  setTimeout(()=>{
+    delete recycleCache[ts];
+    render();
+  },5000);
+}
+
+/* 復原 */
+function restore(ts){
+  let data=recycleCache[ts];
+  if(!data)return;
+
+  data._deleted=false;
+  delete recycleCache[ts];
+  render();
 }
 
 /* 清空 */
