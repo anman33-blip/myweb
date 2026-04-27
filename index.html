@@ -161,15 +161,28 @@ button.action {
   line-height:1.3;
 }
 
-/* 回收按鈕（加大） */
+/* 回收按鈕 */
 .recycle-btn {
   margin-left:6px;
-  font-size:12px;
-  padding:6px 10px;
+  font-size:11px;
+  padding:6px 6px;
   border:none;
   border-radius:8px;
   background:#ff4757;
   color:white;
+
+  /* ⭐關鍵：允許換行 */
+  white-space:normal;
+  word-break:break-word;
+  line-height:1.1;
+
+  /* ⭐縮小寬度 */
+  width:34px;
+
+  /* ⭐靠右 + 垂直置中 */
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 /* 倒數提示 */
