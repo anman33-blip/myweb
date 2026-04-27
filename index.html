@@ -142,6 +142,7 @@ button.action {
 
 .name { font-weight:bold; min-width:60px; }
 .action { flex:1; }
+
 .time {
   font-size:12px;
   color:gray;
@@ -160,12 +161,23 @@ button.action {
   color:white;
 }
 
+/* 倒數提示 */
 .undo-bar{
   background:#ffeaa7;
   padding:10px;
   margin:10px;
   border-radius:10px;
   text-align:center;
+  font-weight:bold;
+}
+
+.undo-bar button{
+  margin-left:10px;
+  padding:5px 10px;
+  border:none;
+  border-radius:6px;
+  background:#ff4757;
+  color:white;
 }
 </style>
 </head>
@@ -243,7 +255,7 @@ window.onload = function(){
 
 function start(){
   username = document.getElementById("name").value;
-  if(!username){alert("請輸入名字");return;}
+  if(!username){ alert("請輸入名字"); return; }
 
   localStorage.setItem("name", username);
   document.getElementById("login").style.display="none";
@@ -277,6 +289,7 @@ function sendManual(){
   let input = document.getElementById("manualText");
   let text = input.value.trim();
   if(!text) return;
+
   send("📝 " + text);
   input.value = "";
 }
@@ -313,7 +326,7 @@ db.ref("logs").on("value", snap=>{
   render();
 });
 
-/* 回收（刪除+3秒可取消） */
+/* 🔥 回收（倒數版） */
 function revoke(key){
 
   let item = messages[key];
@@ -321,27 +334,49 @@ function revoke(key){
   if(!item) return;
 
   if(item.user !== username){
-    alert("只能刪除自己發送的訊息");
+    alert("只能刪除自己訊息");
     return;
   }
 
-  if(!confirm("是否刪除？（3秒內可取消）")) return;
+  if(!confirm("是否刪除？")) return;
 
   db.ref("logs/"+key).update({deleted:true});
 
+  let timeLeft = 3;
+
   let bar = document.createElement("div");
   bar.className="undo-bar";
-  bar.innerHTML=`已刪除 3秒內可取消 <button onclick="undo('${key}')">取消</button>`;
 
+  let btn = document.createElement("button");
+  btn.innerText = "取消 ("+timeLeft+")";
+
+  btn.onclick = function(){
+    clearInterval(timer);
+    undo(key);
+    bar.remove();
+  };
+
+  bar.innerHTML = "已刪除 ";
+
+  bar.appendChild(btn);
   document.getElementById("chat").prepend(bar);
 
-  undoTimers[key] = setTimeout(()=>{
-    bar.remove();
-    delete undoTimers[key];
-  },3000);
+  let timer = setInterval(()=>{
+
+    timeLeft--;
+
+    if(timeLeft <= 0){
+      clearInterval(timer);
+      bar.remove();
+      return;
+    }
+
+    btn.innerText = "取消 ("+timeLeft+")";
+
+  },1000);
 }
 
-/* 取消刪除 */
+/* 取消 */
 function undo(key){
   db.ref("logs/"+key).update({deleted:false});
 }
@@ -353,7 +388,6 @@ function render(){
   div.innerHTML = "";
 
   let arr = Object.entries(messages);
-
   arr.sort((a,b)=>b[1].ts - a[1].ts);
 
   arr.forEach(([key,d],i)=>{
